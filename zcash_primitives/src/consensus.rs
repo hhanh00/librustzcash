@@ -181,6 +181,41 @@ pub trait Parameters: Clone {
     fn b58_script_address_prefix(&self) -> [u8; 2];
 }
 
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct YCashMainNetwork;
+pub const YCASH_MAIN_NETWORK: YCashMainNetwork = YCashMainNetwork;
+
+impl Parameters for YCashMainNetwork {
+    fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
+        MainNetwork.activation_height(nu)
+    }
+
+    fn coin_type(&self) -> u32 {
+        347
+    }
+
+    fn hrp_sapling_extended_spending_key(&self) -> &str {
+        constants::mainnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
+    }
+
+    fn hrp_sapling_extended_full_viewing_key(&self) -> &str {
+        constants::mainnet::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
+    }
+
+    fn hrp_sapling_payment_address(&self) -> &str {
+        "ys"
+    }
+
+    fn b58_pubkey_address_prefix(&self) -> [u8; 2] {
+        [0x1c, 0x28]
+    }
+
+    fn b58_script_address_prefix(&self) -> [u8; 2] {
+        [0x1c, 0x2c]
+    }
+}
+
+
 /// Marker struct for the production network.
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct MainNetwork;
@@ -192,6 +227,7 @@ impl Parameters for MainNetwork {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(419_200)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
             NetworkUpgrade::Blossom => Some(BlockHeight(653_600)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_000)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_046_400)),
@@ -236,6 +272,7 @@ impl Parameters for TestNetwork {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
             NetworkUpgrade::Blossom => Some(BlockHeight(584_000)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
@@ -273,6 +310,7 @@ impl Parameters for TestNetwork {
 pub enum Network {
     MainNetwork,
     TestNetwork,
+    YCashMainNetwork,
 }
 
 impl Parameters for Network {
@@ -280,6 +318,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.activation_height(nu),
             Network::TestNetwork => TEST_NETWORK.activation_height(nu),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.activation_height(nu),
         }
     }
 
@@ -287,6 +326,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.coin_type(),
             Network::TestNetwork => TEST_NETWORK.coin_type(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.coin_type(),
         }
     }
 
@@ -294,6 +334,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_spending_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
         }
     }
 
@@ -301,6 +342,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
         }
     }
 
@@ -308,6 +350,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_payment_address(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_payment_address(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_payment_address(),
         }
     }
 
@@ -315,6 +358,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_pubkey_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_pubkey_address_prefix(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_pubkey_address_prefix(),
         }
     }
 
@@ -322,6 +366,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_script_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_script_address_prefix(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_script_address_prefix(),
         }
     }
 }
@@ -340,6 +385,7 @@ pub enum NetworkUpgrade {
     ///
     /// [Sapling]: https://z.cash/upgrade/sapling/
     Sapling,
+    Ycash,
     /// The [Blossom] network upgrade.
     ///
     /// [Blossom]: https://z.cash/upgrade/blossom/
@@ -366,6 +412,7 @@ impl fmt::Display for NetworkUpgrade {
         match self {
             NetworkUpgrade::Overwinter => write!(f, "Overwinter"),
             NetworkUpgrade::Sapling => write!(f, "Sapling"),
+            NetworkUpgrade::Ycash => write!(f, "Ycash"),
             NetworkUpgrade::Blossom => write!(f, "Blossom"),
             NetworkUpgrade::Heartwood => write!(f, "Heartwood"),
             NetworkUpgrade::Canopy => write!(f, "Canopy"),
@@ -380,6 +427,7 @@ impl NetworkUpgrade {
         match self {
             NetworkUpgrade::Overwinter => BranchId::Overwinter,
             NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Ycash => BranchId::Ycash,
             NetworkUpgrade::Blossom => BranchId::Blossom,
             NetworkUpgrade::Heartwood => BranchId::Heartwood,
             NetworkUpgrade::Canopy => BranchId::Canopy,
@@ -424,6 +472,7 @@ pub enum BranchId {
     Overwinter,
     /// The consensus rules deployed by [`NetworkUpgrade::Sapling`].
     Sapling,
+    Ycash,
     /// The consensus rules deployed by [`NetworkUpgrade::Blossom`].
     Blossom,
     /// The consensus rules deployed by [`NetworkUpgrade::Heartwood`].
@@ -444,6 +493,7 @@ impl TryFrom<u32> for BranchId {
             0 => Ok(BranchId::Sprout),
             0x5ba8_1b19 => Ok(BranchId::Overwinter),
             0x76b8_09bb => Ok(BranchId::Sapling),
+            0x374d_694f => Ok(BranchId::Ycash),
             0x2bb4_0e60 => Ok(BranchId::Blossom),
             0xf5b9_230b => Ok(BranchId::Heartwood),
             0xe9ff_75a6 => Ok(BranchId::Canopy),
@@ -460,6 +510,7 @@ impl From<BranchId> for u32 {
             BranchId::Sprout => 0,
             BranchId::Overwinter => 0x5ba8_1b19,
             BranchId::Sapling => 0x76b8_09bb,
+            BranchId::Ycash => 0x374d_694f,
             BranchId::Blossom => 0x2bb4_0e60,
             BranchId::Heartwood => 0xf5b9_230b,
             BranchId::Canopy => 0xe9ff_75a6,
