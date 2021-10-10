@@ -181,40 +181,10 @@ pub trait Parameters: Clone {
     fn b58_script_address_prefix(&self) -> [u8; 2];
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct YCashMainNetwork;
-pub const YCASH_MAIN_NETWORK: YCashMainNetwork = YCashMainNetwork;
+mod ycash;
 
-impl Parameters for YCashMainNetwork {
-    fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
-        MainNetwork.activation_height(nu)
-    }
-
-    fn coin_type(&self) -> u32 {
-        347
-    }
-
-    fn hrp_sapling_extended_spending_key(&self) -> &str {
-        constants::mainnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
-    }
-
-    fn hrp_sapling_extended_full_viewing_key(&self) -> &str {
-        constants::mainnet::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
-    }
-
-    fn hrp_sapling_payment_address(&self) -> &str {
-        "ys"
-    }
-
-    fn b58_pubkey_address_prefix(&self) -> [u8; 2] {
-        [0x1c, 0x28]
-    }
-
-    fn b58_script_address_prefix(&self) -> [u8; 2] {
-        [0x1c, 0x2c]
-    }
-}
-
+pub const YCASH_MAIN_NETWORK: ycash::MainNetwork = ycash::MainNetwork;
+pub const YCASH_TEST_NETWORK: ycash::TestNetwork = ycash::TestNetwork;
 
 /// Marker struct for the production network.
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -231,6 +201,9 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Blossom => Some(BlockHeight(653_600)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_000)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_046_400)),
+            NetworkUpgrade::YBlossom => None,
+            NetworkUpgrade::YHeartwood => None,
+            NetworkUpgrade::YCanopy => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -276,6 +249,9 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Blossom => Some(BlockHeight(584_000)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
+            NetworkUpgrade::YBlossom => None,
+            NetworkUpgrade::YHeartwood => None,
+            NetworkUpgrade::YCanopy => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -311,6 +287,7 @@ pub enum Network {
     MainNetwork,
     TestNetwork,
     YCashMainNetwork,
+    YCashTestNetwork,
 }
 
 impl Parameters for Network {
@@ -319,6 +296,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.activation_height(nu),
             Network::TestNetwork => TEST_NETWORK.activation_height(nu),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.activation_height(nu),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.activation_height(nu),
         }
     }
 
@@ -327,6 +305,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.coin_type(),
             Network::TestNetwork => TEST_NETWORK.coin_type(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.coin_type(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.coin_type(),
         }
     }
 
@@ -335,6 +314,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_spending_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_spending_key(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_spending_key(),
         }
     }
 
@@ -343,6 +323,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
         }
     }
 
@@ -351,6 +332,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_payment_address(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_payment_address(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_payment_address(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_payment_address(),
         }
     }
 
@@ -359,6 +341,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.b58_pubkey_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_pubkey_address_prefix(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_pubkey_address_prefix(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_pubkey_address_prefix(),
         }
     }
 
@@ -367,6 +350,7 @@ impl Parameters for Network {
             Network::MainNetwork => MAIN_NETWORK.b58_script_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_script_address_prefix(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_script_address_prefix(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_script_address_prefix(),
         }
     }
 }
@@ -398,6 +382,10 @@ pub enum NetworkUpgrade {
     ///
     /// [Canopy]: https://z.cash/upgrade/canopy/
     Canopy,
+    /// Ycash NU
+    YBlossom,
+    YHeartwood,
+    YCanopy,
     /// The ZFUTURE network upgrade.
     ///
     /// This upgrade is expected never to activate on mainnet;
@@ -416,6 +404,9 @@ impl fmt::Display for NetworkUpgrade {
             NetworkUpgrade::Blossom => write!(f, "Blossom"),
             NetworkUpgrade::Heartwood => write!(f, "Heartwood"),
             NetworkUpgrade::Canopy => write!(f, "Canopy"),
+            NetworkUpgrade::YBlossom => write!(f, "Ycash Blossom"),
+            NetworkUpgrade::YHeartwood => write!(f, "Ycash Heartwood"),
+            NetworkUpgrade::YCanopy => write!(f, "Ycash Canopy"),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => write!(f, "ZFUTURE"),
         }
@@ -431,6 +422,9 @@ impl NetworkUpgrade {
             NetworkUpgrade::Blossom => BranchId::Blossom,
             NetworkUpgrade::Heartwood => BranchId::Heartwood,
             NetworkUpgrade::Canopy => BranchId::Canopy,
+            NetworkUpgrade::YBlossom => BranchId::YBlossom,
+            NetworkUpgrade::YHeartwood => BranchId::YHeartwood,
+            NetworkUpgrade::YCanopy => BranchId::YCanopy,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
         }
@@ -479,6 +473,9 @@ pub enum BranchId {
     Heartwood,
     /// The consensus rules deployed by [`NetworkUpgrade::Canopy`].
     Canopy,
+    YBlossom,
+    YHeartwood,
+    YCanopy,
     /// Candidates for future consensus rules; this branch will never
     /// activate on mainnet.
     #[cfg(feature = "zfuture")]
@@ -497,6 +494,9 @@ impl TryFrom<u32> for BranchId {
             0x2bb4_0e60 => Ok(BranchId::Blossom),
             0xf5b9_230b => Ok(BranchId::Heartwood),
             0xe9ff_75a6 => Ok(BranchId::Canopy),
+            0x8e47_1bd6 => Ok(BranchId::YBlossom),
+            0x6631_4da3 => Ok(BranchId::YHeartwood),
+            0x19bd_2d2f => Ok(BranchId::YCanopy),
             #[cfg(feature = "zfuture")]
             0xffff_ffff => Ok(BranchId::ZFuture),
             _ => Err("Unknown consensus branch ID"),
@@ -514,6 +514,9 @@ impl From<BranchId> for u32 {
             BranchId::Blossom => 0x2bb4_0e60,
             BranchId::Heartwood => 0xf5b9_230b,
             BranchId::Canopy => 0xe9ff_75a6,
+            BranchId::YBlossom => 0x8e47_1bd6,
+            BranchId::YHeartwood => 0x6631_4da3,
+            BranchId::YCanopy => 0x19bd_2d2f,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => 0xffff_ffff,
         }
