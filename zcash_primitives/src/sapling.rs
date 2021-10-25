@@ -31,6 +31,7 @@ use self::{
     pedersen_hash::{pedersen_hash, Personalization},
     redjubjub::{PrivateKey, PublicKey, Signature},
 };
+use jubjub::SubgroupPoint;
 
 pub const SAPLING_COMMITMENT_TREE_DEPTH: usize = 32;
 
@@ -216,6 +217,10 @@ impl ViewingKey {
 
     pub fn to_payment_address(&self, diversifier: Diversifier) -> Option<PaymentAddress> {
         self.ivk().to_payment_address(diversifier)
+    }
+
+    pub fn set_ak(&mut self, ak: &SubgroupPoint) {
+        self.ak = ak.clone();
     }
 }
 

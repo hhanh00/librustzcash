@@ -17,6 +17,7 @@ use crate::{load_parameters, parse_parameters, sapling::SaplingProvingContext};
 
 #[cfg(feature = "local-prover")]
 use crate::{default_params_folder, SAPLING_OUTPUT_NAME, SAPLING_SPEND_NAME};
+use rand_core::{CryptoRng, RngCore};
 
 /// An implementation of [`TxProver`] using Sapling Spend and Output parameters from
 /// locally-accessible paths.
@@ -137,7 +138,7 @@ impl LocalTxProver {
     }
 }
 
-impl TxProver for LocalTxProver {
+impl <R: RngCore + CryptoRng> TxProver<R> for LocalTxProver {
     type SaplingProvingContext = SaplingProvingContext;
 
     fn new_sapling_proving_context(&self) -> Self::SaplingProvingContext {
@@ -154,6 +155,7 @@ impl TxProver for LocalTxProver {
         value: u64,
         anchor: bls12_381::Scalar,
         merkle_path: MerklePath<Node>,
+        rng: &mut R,
     ) -> Result<([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint, PublicKey), ()> {
         let (proof, cv, rk) = ctx.spend_proof(
             proof_generation_key,
@@ -165,6 +167,7 @@ impl TxProver for LocalTxProver {
             merkle_path,
             &self.spend_params,
             &self.spend_vk,
+            rng,
         )?;
 
         let mut zkproof = [0u8; GROTH_PROOF_SIZE];
@@ -182,8 +185,9 @@ impl TxProver for LocalTxProver {
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,
         value: u64,
+        rng: &mut R,
     ) -> ([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint) {
-        let (proof, cv) = ctx.output_proof(esk, payment_address, rcm, value, &self.output_params);
+        let (proof, cv) = ctx.output_proof(esk, payment_address, rcm, value, &self.output_params, rng);
 
         let mut zkproof = [0u8; GROTH_PROOF_SIZE];
         proof
@@ -198,7 +202,8 @@ impl TxProver for LocalTxProver {
         ctx: &mut Self::SaplingProvingContext,
         value_balance: Amount,
         sighash: &[u8; 32],
+        rng: &mut R,
     ) -> Result<Signature, ()> {
-        ctx.binding_sig(value_balance, sighash)
+        ctx.binding_sig(value_balance, sighash, rng)
     }
 }

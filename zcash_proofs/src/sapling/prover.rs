@@ -3,9 +3,8 @@ use bellman::{
     groth16::{create_random_proof, verify_proof, Parameters, PreparedVerifyingKey, Proof},
 };
 use bls12_381::Bls12;
-use ff::Field;
 use group::{Curve, GroupEncoding};
-use rand_core::OsRng;
+use rand_core::{RngCore, CryptoRng};
 use std::ops::{AddAssign, Neg};
 use zcash_primitives::{
     constants::{SPENDING_KEY_GENERATOR, VALUE_COMMITMENT_RANDOMNESS_GENERATOR},
@@ -42,11 +41,17 @@ impl SaplingProvingContext {
         }
     }
 
+    fn random_scalar<R: RngCore + CryptoRng>(rng: &mut R) -> jubjub::Fr {
+        let mut buf = [0; 64];
+        rng.fill_bytes(&mut buf);
+        jubjub::Fr::from_bytes_wide(&buf)
+    }
+
     /// Create the value commitment, re-randomized key, and proof for a Sapling
     /// SpendDescription, while accumulating its value commitment randomness
     /// inside the context for later use.
     #[allow(clippy::too_many_arguments)]
-    pub fn spend_proof(
+    pub fn spend_proof<R: RngCore + CryptoRng>(
         &mut self,
         proof_generation_key: ProofGenerationKey,
         diversifier: Diversifier,
@@ -57,12 +62,10 @@ impl SaplingProvingContext {
         merkle_path: MerklePath<Node>,
         proving_key: &Parameters<Bls12>,
         verifying_key: &PreparedVerifyingKey<Bls12>,
+        rng: &mut R
     ) -> Result<(Proof<Bls12>, jubjub::ExtendedPoint, PublicKey), ()> {
-        // Initialize secure RNG
-        let mut rng = OsRng;
-
         // We create the randomness of the value commitment
-        let rcv = jubjub::Fr::random(&mut rng);
+        let rcv = Self::random_scalar(rng);
 
         // Accumulate the value commitment randomness in the context
         {
@@ -116,7 +119,7 @@ impl SaplingProvingContext {
 
         // Create proof
         let proof =
-            create_random_proof(instance, proving_key, &mut rng).expect("proving should not fail");
+            create_random_proof(instance, proving_key, rng).expect("proving should not fail");
 
         // Try to verify the proof:
         // Construct public input for circuit
@@ -161,21 +164,19 @@ impl SaplingProvingContext {
     /// Create the value commitment and proof for a Sapling OutputDescription,
     /// while accumulating its value commitment randomness inside the context
     /// for later use.
-    pub fn output_proof(
+    pub fn output_proof<R: RngCore + CryptoRng>(
         &mut self,
         esk: jubjub::Fr,
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,
         value: u64,
         proving_key: &Parameters<Bls12>,
+        rng: &mut R,
     ) -> (Proof<Bls12>, jubjub::ExtendedPoint) {
-        // Initialize secure RNG
-        let mut rng = OsRng;
-
         // We construct ephemeral randomness for the value commitment. This
         // randomness is not given back to the caller, but the synthetic
         // blinding factor `bsk` is accumulated in the context.
-        let rcv = jubjub::Fr::random(&mut rng);
+        let rcv = Self::random_scalar(rng);
 
         // Accumulate the value commitment randomness in the context
         {
@@ -202,7 +203,7 @@ impl SaplingProvingContext {
 
         // Create proof
         let proof =
-            create_random_proof(instance, proving_key, &mut rng).expect("proving should not fail");
+            create_random_proof(instance, proving_key, rng).expect("proving should not fail");
 
         // Compute the actual value commitment
         let value_commitment: jubjub::ExtendedPoint = value_commitment.commitment().into();
@@ -215,10 +216,7 @@ impl SaplingProvingContext {
 
     /// Create the bindingSig for a Sapling transaction. All calls to spend_proof()
     /// and output_proof() must be completed before calling this function.
-    pub fn binding_sig(&self, value_balance: Amount, sighash: &[u8; 32]) -> Result<Signature, ()> {
-        // Initialize secure RNG
-        let mut rng = OsRng;
-
+    pub fn binding_sig<R: RngCore + CryptoRng>(&self, value_balance: Amount, sighash: &[u8; 32], rng: &mut R) -> Result<Signature, ()> {
         // Grab the current `bsk` from the context
         let bsk = PrivateKey(self.bsk);
 
@@ -249,7 +247,7 @@ impl SaplingProvingContext {
         // Sign
         Ok(bsk.sign(
             &data_to_be_signed,
-            &mut rng,
+            rng,
             VALUE_COMMITMENT_RANDOMNESS_GENERATOR,
         ))
     }

@@ -10,9 +10,10 @@ use crate::{
 };
 
 use super::{Diversifier, PaymentAddress, ProofGenerationKey, Rseed};
+use rand_core::{RngCore, CryptoRng};
 
 /// Interface for creating zero-knowledge proofs for shielded transactions.
-pub trait TxProver {
+pub trait TxProver<R: RngCore + CryptoRng> {
     /// Type for persisting any necessary context across multiple Sapling proofs.
     type SaplingProvingContext;
 
@@ -35,6 +36,7 @@ pub trait TxProver {
         value: u64,
         anchor: bls12_381::Scalar,
         merkle_path: MerklePath<Node>,
+        rng: &mut R
     ) -> Result<([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint, PublicKey), ()>;
 
     /// Create the value commitment and proof for a Sapling [`OutputDescription`],
@@ -49,6 +51,7 @@ pub trait TxProver {
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,
         value: u64,
+        rng: &mut R
     ) -> ([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint);
 
     /// Create the `bindingSig` for a Sapling transaction. All calls to
@@ -59,6 +62,7 @@ pub trait TxProver {
         ctx: &mut Self::SaplingProvingContext,
         value_balance: Amount,
         sighash: &[u8; 32],
+        rng: &mut R
     ) -> Result<Signature, ()>;
 }
 

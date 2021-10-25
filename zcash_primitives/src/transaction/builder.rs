@@ -148,7 +148,7 @@ impl<P: consensus::Parameters> SaplingOutput<P> {
         })
     }
 
-    pub fn build<Pr: TxProver, R: RngCore + CryptoRng>(
+    pub fn build<Pr: TxProver<R>, R: RngCore + CryptoRng>(
         self,
         prover: &Pr,
         ctx: &mut Pr::SaplingProvingContext,
@@ -157,7 +157,7 @@ impl<P: consensus::Parameters> SaplingOutput<P> {
         self.build_internal(prover, ctx, rng)
     }
 
-    fn build_internal<Pr: TxProver, R: RngCore>(
+    fn build_internal<Pr: TxProver<R>, R: RngCore + CryptoRng>(
         self,
         prover: &Pr,
         ctx: &mut Pr::SaplingProvingContext,
@@ -177,6 +177,7 @@ impl<P: consensus::Parameters> SaplingOutput<P> {
             self.to,
             self.note.rcm(),
             self.note.value,
+            rng,
         );
 
         let cmu = self.note.cmu();
@@ -479,7 +480,7 @@ impl<'a, P: consensus::Parameters, R: RngCore + CryptoRng> Builder<'a, P, R> {
     }
 }
 
-impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
+impl<'a, P: consensus::Parameters, R: RngCore + CryptoRng> Builder<'a, P, R> {
     /// Common utility function for builder construction.
     ///
     /// WARNING: THIS MUST REMAIN PRIVATE AS IT ALLOWS CONSTRUCTION
@@ -634,7 +635,7 @@ impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
     pub fn build(
         mut self,
         consensus_branch_id: consensus::BranchId,
-        prover: &impl TxProver,
+        prover: &impl TxProver<R>,
     ) -> Result<(Transaction, TransactionMetadata), Error> {
         let mut tx_metadata = TransactionMetadata::new();
 
@@ -750,6 +751,7 @@ impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
                         spend.note.value,
                         anchor,
                         spend.merkle_path.clone(),
+                        &mut self.rng,
                     )
                     .map_err(|()| Error::SpendProof)?;
 
@@ -829,6 +831,7 @@ impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
                     dummy_to,
                     dummy_note.rcm(),
                     dummy_note.value,
+                    &mut self.rng,
                 );
 
                 let cmu = dummy_note.cmu();
@@ -883,7 +886,7 @@ impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
         self.mtx.binding_sig = if binding_sig_needed {
             Some(
                 prover
-                    .binding_sig(&mut ctx, self.mtx.value_balance, &sighash)
+                    .binding_sig(&mut ctx, self.mtx.value_balance, &sighash, &mut self.rng)
                     .map_err(|_| Error::BindingSig)?,
             )
         } else {

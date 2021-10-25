@@ -20,6 +20,8 @@ use crate::{
     wallet::{AccountId, OvkPolicy},
 };
 
+use rand_core::OsRng;
+
 pub const ANCHOR_OFFSET: u32 = 10;
 
 /// Scans a [`Transaction`] for any information that can be decrypted by the accounts in
@@ -150,7 +152,7 @@ where
 pub fn create_spend_to_address<E, N, P, D, R>(
     wallet_db: &mut D,
     params: &P,
-    prover: impl TxProver,
+    prover: impl TxProver<OsRng>,
     account: AccountId,
     extsk: &ExtendedSpendingKey,
     to: &RecipientAddress,
