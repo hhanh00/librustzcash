@@ -334,7 +334,9 @@ pub fn plaintext_version_is_valid<P: consensus::Parameters>(
         }
     } else {
         // return false if non-0x01 received when Canopy is not active
-        leadbyte == 0x01
+        // Workaround: YWallet early activation of ZIP 212
+        // Accept ZIP 212
+        leadbyte == 0x01 || leadbyte == 0x02
     }
 }
 
