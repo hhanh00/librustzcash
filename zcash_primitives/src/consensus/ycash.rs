@@ -1,10 +1,22 @@
 use crate::consensus::{Parameters, NetworkUpgrade, BlockHeight};
 use crate::constants;
 
+const YCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] =
+    &[
+        NetworkUpgrade::Overwinter,
+        NetworkUpgrade::Sapling,
+        NetworkUpgrade::Ycash,
+        NetworkUpgrade::YBlossom,
+        NetworkUpgrade::YHeartwood,
+        NetworkUpgrade::YCanopy,
+    ];
+
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct MainNetwork;
 
 impl Parameters for MainNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { YCASH_UPGRADES_IN_ORDER }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
@@ -50,17 +62,21 @@ impl Parameters for MainNetwork {
 pub struct TestNetwork;
 
 impl Parameters for TestNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] {
+        YCASH_UPGRADES_IN_ORDER
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
-            NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
-            NetworkUpgrade::Sapling => Some(BlockHeight(419_200)),
+            NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
+            NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
             NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
             NetworkUpgrade::Blossom => None,
             NetworkUpgrade::Heartwood => None,
             NetworkUpgrade::Canopy => None,
-            NetworkUpgrade::YBlossom => Some(BlockHeight(661_100)),
-            NetworkUpgrade::YHeartwood => Some(BlockHeight(661_112)),
-            NetworkUpgrade::YCanopy => Some(BlockHeight(661_124)),
+            NetworkUpgrade::YBlossom => Some(BlockHeight(661_610)),
+            NetworkUpgrade::YHeartwood => Some(BlockHeight(661_622)),
+            NetworkUpgrade::YCanopy => Some(BlockHeight(661_634)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }

@@ -125,6 +125,8 @@ impl Sub for BlockHeight {
 
 /// Zcash consensus parameters.
 pub trait Parameters: Clone {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade];
+
     /// Returns the activation height for a particular network upgrade,
     /// if an activation height has been set.
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight>;
@@ -193,6 +195,8 @@ pub struct MainNetwork;
 pub const MAIN_NETWORK: MainNetwork = MainNetwork;
 
 impl Parameters for MainNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
@@ -241,6 +245,8 @@ pub struct TestNetwork;
 pub const TEST_NETWORK: TestNetwork = TestNetwork;
 
 impl Parameters for TestNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
@@ -291,6 +297,19 @@ pub enum Network {
 }
 
 impl Parameters for Network {
+    /// The network upgrades on the Zcash chain in order of activation.
+    ///
+    /// This order corresponds to the activation heights, but because Rust enums are
+    /// full-fledged algebraic data types, we need to define it manually.
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] {
+        match self {
+            Network::MainNetwork => MAIN_NETWORK.upgrades_in_order(),
+            Network::TestNetwork => TEST_NETWORK.upgrades_in_order(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.upgrades_in_order(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.upgrades_in_order(),
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match self {
             Network::MainNetwork => MAIN_NETWORK.activation_height(nu),
@@ -413,6 +432,15 @@ impl fmt::Display for NetworkUpgrade {
     }
 }
 
+const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] =
+    &[
+        NetworkUpgrade::Overwinter,
+        NetworkUpgrade::Sapling,
+        NetworkUpgrade::Blossom,
+        NetworkUpgrade::Heartwood,
+        NetworkUpgrade::Canopy,
+    ];
+
 impl NetworkUpgrade {
     fn branch_id(self) -> BranchId {
         match self {
@@ -430,18 +458,6 @@ impl NetworkUpgrade {
         }
     }
 }
-
-/// The network upgrades on the Zcash chain in order of activation.
-///
-/// This order corresponds to the activation heights, but because Rust enums are
-/// full-fledged algebraic data types, we need to define it manually.
-const UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
-    NetworkUpgrade::Overwinter,
-    NetworkUpgrade::Sapling,
-    NetworkUpgrade::Blossom,
-    NetworkUpgrade::Heartwood,
-    NetworkUpgrade::Canopy,
-];
 
 pub const ZIP212_GRACE_PERIOD: u32 = 32256;
 
@@ -529,7 +545,7 @@ impl BranchId {
     ///
     /// This is the branch ID that should be used when creating transactions.
     pub fn for_height<P: Parameters>(parameters: &P, height: BlockHeight) -> Self {
-        for nu in UPGRADES_IN_ORDER.iter().rev() {
+        for nu in parameters.upgrades_in_order().iter().rev() {
             if parameters.is_nu_active(*nu, height) {
                 return nu.branch_id();
             }
@@ -543,16 +559,17 @@ impl BranchId {
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
+    use crate::consensus::ZCASH_UPGRADES_IN_ORDER;
 
     use super::{
-        BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK, UPGRADES_IN_ORDER,
+        BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK,
     };
 
     #[test]
     fn nu_ordering() {
-        for i in 1..UPGRADES_IN_ORDER.len() {
-            let nu_a = UPGRADES_IN_ORDER[i - 1];
-            let nu_b = UPGRADES_IN_ORDER[i];
+        for i in 1..ZCASH_UPGRADES_IN_ORDER.len() {
+            let nu_a = ZCASH_UPGRADES_IN_ORDER[i - 1];
+            let nu_b = ZCASH_UPGRADES_IN_ORDER[i];
             match (
                 MAIN_NETWORK.activation_height(nu_a),
                 MAIN_NETWORK.activation_height(nu_b),

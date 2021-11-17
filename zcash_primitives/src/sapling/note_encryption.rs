@@ -19,6 +19,7 @@ use crate::{
     sapling::{keys::OutgoingViewingKey, Diversifier, Note, PaymentAddress, Rseed, SaplingIvk},
     transaction::components::{amount::Amount, sapling::OutputDescription},
 };
+use crate::consensus::NetworkUpgrade::YCanopy;
 
 pub const KDF_SAPLING_PERSONALIZATION: &[u8; 16] = b"Zcash_SaplingKDF";
 pub const PRF_OCK_PERSONALIZATION: &[u8; 16] = b"Zcash_Derive_ock";
@@ -319,9 +320,9 @@ pub fn plaintext_version_is_valid<P: consensus::Parameters>(
     height: BlockHeight,
     leadbyte: u8,
 ) -> bool {
-    if params.is_nu_active(Canopy, height) {
+    if params.is_nu_active(Canopy, height) || params.is_nu_active(YCanopy, height) {
         let grace_period_end_height =
-            params.activation_height(Canopy).unwrap() + ZIP212_GRACE_PERIOD;
+            params.activation_height(Canopy).or(params.activation_height(YCanopy)).unwrap() + ZIP212_GRACE_PERIOD;
 
         if height < grace_period_end_height && leadbyte != 0x01 && leadbyte != 0x02 {
             // non-{0x01,0x02} received after Canopy activation and before grace period has elapsed
