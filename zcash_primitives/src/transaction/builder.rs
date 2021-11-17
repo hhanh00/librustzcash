@@ -968,7 +968,7 @@ impl<'a, P: consensus::Parameters, R: RngCore + CryptoRng> ExtensionTxBuilder<'a
 }
 
 #[cfg(any(test, feature = "test-dependencies"))]
-impl<'a, P: consensus::Parameters, R: RngCore> Builder<'a, P, R> {
+impl<'a, P: consensus::Parameters, R: RngCore + CryptoRng> Builder<'a, P, R> {
     /// Creates a new `Builder` targeted for inclusion in the block with the given height
     /// and randomness source, using default values for general transaction fields.
     ///

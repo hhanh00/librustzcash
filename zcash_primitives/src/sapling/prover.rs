@@ -69,7 +69,7 @@ pub trait TxProver<R: RngCore + CryptoRng> {
 #[cfg(any(test, feature = "test-dependencies"))]
 pub mod mock {
     use ff::Field;
-    use rand_core::OsRng;
+    use rand_core::{CryptoRng, OsRng, RngCore};
 
     use crate::{
         constants::SPENDING_KEY_GENERATOR,
@@ -85,7 +85,7 @@ pub mod mock {
 
     pub struct MockTxProver;
 
-    impl TxProver for MockTxProver {
+    impl <R: RngCore + CryptoRng>  TxProver<R> for MockTxProver {
         type SaplingProvingContext = ();
 
         fn new_sapling_proving_context(&self) -> Self::SaplingProvingContext {}
@@ -100,6 +100,7 @@ pub mod mock {
             value: u64,
             _anchor: bls12_381::Scalar,
             _merkle_path: MerklePath<Node>,
+            _rng: &mut R,
         ) -> Result<([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint, PublicKey), ()> {
             let mut rng = OsRng;
 
@@ -123,6 +124,7 @@ pub mod mock {
             _payment_address: PaymentAddress,
             _rcm: jubjub::Fr,
             value: u64,
+            _rng: &mut R,
         ) -> ([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint) {
             let mut rng = OsRng;
 
@@ -141,6 +143,7 @@ pub mod mock {
             _ctx: &mut Self::SaplingProvingContext,
             _value_balance: Amount,
             _sighash: &[u8; 32],
+            _rng: &mut R,
         ) -> Result<Signature, ()> {
             Err(())
         }

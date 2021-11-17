@@ -148,6 +148,7 @@ pub fn select_spendable_notes<P>(
 
 #[cfg(test)]
 mod tests {
+    use rand_core::{RngCore, CryptoRng};
     use rusqlite::Connection;
     use tempfile::NamedTempFile;
 
@@ -177,7 +178,7 @@ mod tests {
         AccountId, BlockDb, DataConnStmtCache, WalletDb,
     };
 
-    fn test_prover() -> impl TxProver {
+    fn test_prover<R: RngCore + CryptoRng> () -> impl TxProver<R> {
         match LocalTxProver::with_default_location() {
             Some(tx_prover) => tx_prover,
             None => {
