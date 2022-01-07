@@ -25,9 +25,9 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Blossom => None,
             NetworkUpgrade::Heartwood => None,
             NetworkUpgrade::Canopy => None,
-            NetworkUpgrade::YBlossom => None,
-            NetworkUpgrade::YHeartwood => None,
-            NetworkUpgrade::YCanopy => None,
+            NetworkUpgrade::YBlossom => Some(BlockHeight(1_100_000)),
+            NetworkUpgrade::YHeartwood => Some(BlockHeight(1_100_003)),
+            NetworkUpgrade::YCanopy => Some(BlockHeight(1_100_006)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
