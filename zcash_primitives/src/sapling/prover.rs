@@ -37,6 +37,19 @@ pub trait TxProver {
         merkle_path: MerklePath<Node>,
     ) -> Result<([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint, PublicKey), ()>;
 
+    fn spend_proof_with_rcv(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        rcv: jubjub::Fr,
+        proof_generation_key: ProofGenerationKey,
+        diversifier: Diversifier,
+        rseed: Rseed,
+        ar: jubjub::Fr,
+        value: u64,
+        anchor: bls12_381::Scalar,
+        merkle_path: MerklePath<Node>,
+    ) -> Result<([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint, PublicKey), ()>;
+
     /// Create the value commitment and proof for a Sapling [`OutputDescription`],
     /// while accumulating its value commitment randomness inside the context for later
     /// use.
@@ -45,6 +58,16 @@ pub trait TxProver {
     fn output_proof(
         &self,
         ctx: &mut Self::SaplingProvingContext,
+        esk: jubjub::Fr,
+        payment_address: PaymentAddress,
+        rcm: jubjub::Fr,
+        value: u64,
+    ) -> ([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint);
+
+    fn output_proof_with_rcv(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        rcv: jubjub::Fr,
         esk: jubjub::Fr,
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,

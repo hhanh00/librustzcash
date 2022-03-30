@@ -47,6 +47,7 @@ impl SaplingProvingContext {
     #[allow(clippy::too_many_arguments)]
     pub fn spend_proof(
         &mut self,
+        rcv: jubjub::Fr,
         proof_generation_key: ProofGenerationKey,
         diversifier: Diversifier,
         rseed: Rseed,
@@ -59,9 +60,6 @@ impl SaplingProvingContext {
     ) -> Result<(Proof<Bls12>, jubjub::ExtendedPoint, PublicKey), ()> {
         // Initialize secure RNG
         let mut rng = OsRng;
-
-        // We create the randomness of the value commitment
-        let rcv = jubjub::Fr::random(&mut rng);
 
         // Accumulate the value commitment randomness in the context
         {
@@ -156,9 +154,6 @@ impl SaplingProvingContext {
         Ok((proof, value_commitment, rk))
     }
 
-    /// Create the value commitment and proof for a Sapling OutputDescription,
-    /// while accumulating its value commitment randomness inside the context
-    /// for later use.
     pub fn output_proof(
         &mut self,
         esk: jubjub::Fr,
@@ -174,6 +169,21 @@ impl SaplingProvingContext {
         // randomness is not given back to the caller, but the synthetic
         // blinding factor `bsk` is accumulated in the context.
         let rcv = jubjub::Fr::random(&mut rng);
+        self.output_proof_with_rcv(rcv, esk, payment_address, rcm, value, proving_key)
+    }
+
+    /// Create the value commitment and proof for a Sapling OutputDescription,
+    /// while accumulating its value commitment randomness inside the context
+    /// for later use.
+    pub fn output_proof_with_rcv(
+        &mut self,
+        rcv: jubjub::Fr,
+        esk: jubjub::Fr,
+        payment_address: PaymentAddress,
+        rcm: jubjub::Fr,
+        value: u64,
+        proving_key: &Parameters<Bls12>,
+    ) -> (Proof<Bls12>, jubjub::ExtendedPoint) {
 
         // Accumulate the value commitment randomness in the context
         {
@@ -183,6 +193,7 @@ impl SaplingProvingContext {
             // Update the context
             self.bsk = tmp;
         }
+        let mut rng = OsRng;
 
         // Construct the value commitment for the proof instance
         let value_commitment = ValueCommitment {
