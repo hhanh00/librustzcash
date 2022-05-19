@@ -27,7 +27,7 @@ pub(crate) fn generate_random_rseed_internal<P: consensus::Parameters, R: RngCor
     height: BlockHeight,
     rng: &mut R,
 ) -> Rseed {
-    if params.is_nu_active(NetworkUpgrade::Canopy, height) {
+    if params.is_nu_active(NetworkUpgrade::Canopy, height) || params.is_nu_active(NetworkUpgrade::YCanopy, height) {
         let mut buffer = [0u8; 32];
         rng.fill_bytes(&mut buffer);
         Rseed::AfterZip212(buffer)
