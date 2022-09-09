@@ -1,4 +1,4 @@
-use crate::consensus::{Parameters, NetworkUpgrade, BlockHeight};
+use crate::consensus::{Parameters, NetworkUpgrade, BlockHeight, BranchId};
 use crate::constants;
 
 const YCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] =
@@ -6,9 +6,9 @@ const YCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] =
         NetworkUpgrade::Overwinter,
         NetworkUpgrade::Sapling,
         NetworkUpgrade::Ycash,
-        NetworkUpgrade::YBlossom,
-        NetworkUpgrade::YHeartwood,
-        NetworkUpgrade::YCanopy,
+        NetworkUpgrade::Blossom,
+        NetworkUpgrade::Heartwood,
+        NetworkUpgrade::Canopy,
     ];
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -17,17 +17,26 @@ pub struct MainNetwork;
 impl Parameters for MainNetwork {
     fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { YCASH_UPGRADES_IN_ORDER }
 
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Ycash => BranchId::Ycash,
+            NetworkUpgrade::Blossom => BranchId::YBlossom,
+            NetworkUpgrade::Heartwood => BranchId::YHeartwood,
+            NetworkUpgrade::Canopy => BranchId::YCanopy,
+            _ => unreachable!()
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(419_200)),
             NetworkUpgrade::Ycash => Some(BlockHeight(570_000)),
-            NetworkUpgrade::Blossom => None,
-            NetworkUpgrade::Heartwood => None,
-            NetworkUpgrade::Canopy => None,
-            NetworkUpgrade::YBlossom => Some(BlockHeight(1_100_000)),
-            NetworkUpgrade::YHeartwood => Some(BlockHeight(1_100_003)),
-            NetworkUpgrade::YCanopy => Some(BlockHeight(1_100_006)),
+            NetworkUpgrade::Blossom => Some(BlockHeight(1_100_000)),
+            NetworkUpgrade::Heartwood => Some(BlockHeight(1_100_003)),
+            NetworkUpgrade::Canopy => Some(BlockHeight(1_100_006)),
             NetworkUpgrade::Nu5 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
@@ -67,17 +76,26 @@ impl Parameters for TestNetwork {
         YCASH_UPGRADES_IN_ORDER
     }
 
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Ycash => BranchId::Ycash,
+            NetworkUpgrade::Blossom => BranchId::YBlossom,
+            NetworkUpgrade::Heartwood => BranchId::YHeartwood,
+            NetworkUpgrade::Canopy => BranchId::YCanopy,
+            _ => unreachable!()
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
             NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
-            NetworkUpgrade::Blossom => None,
-            NetworkUpgrade::Heartwood => None,
-            NetworkUpgrade::Canopy => None,
-            NetworkUpgrade::YBlossom => Some(BlockHeight(661_610)),
-            NetworkUpgrade::YHeartwood => Some(BlockHeight(661_622)),
-            NetworkUpgrade::YCanopy => Some(BlockHeight(661_634)),
+            NetworkUpgrade::Blossom => Some(BlockHeight(661_610)),
+            NetworkUpgrade::Heartwood => Some(BlockHeight(661_622)),
+            NetworkUpgrade::Canopy => Some(BlockHeight(661_634)),
             NetworkUpgrade::Nu5 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
