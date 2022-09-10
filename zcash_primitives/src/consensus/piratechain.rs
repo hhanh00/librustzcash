@@ -15,8 +15,8 @@ impl Parameters for MainNetwork {
 
     fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
         match nu {
-            NetworkUpgrade::Overwinter => BranchId::POverwinter,
-            NetworkUpgrade::Sapling => BranchId::PSapling,
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
             _ => unreachable!()
         }
     }
