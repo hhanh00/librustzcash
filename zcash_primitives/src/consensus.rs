@@ -544,8 +544,6 @@ pub enum BranchId {
     YBlossom,
     YHeartwood,
     YCanopy,
-    POverwinter,
-    PSapling,
     /// The consensus rules deployed by [`NetworkUpgrade::Nu5`].
     Nu5,
     /// Candidates for future consensus rules; this branch will never
@@ -569,8 +567,6 @@ impl TryFrom<u32> for BranchId {
             0x8e47_1bd6 => Ok(BranchId::YBlossom),
             0x6631_4da3 => Ok(BranchId::YHeartwood),
             0x19bd_2d2f => Ok(BranchId::YCanopy),
-            0x6f76_727a => Ok(BranchId::POverwinter),
-            0x7361_707a => Ok(BranchId::PSapling),
             0xc2d6_d0b4 => Ok(BranchId::Nu5),
             #[cfg(feature = "zfuture")]
             0xffff_ffff => Ok(BranchId::ZFuture),
@@ -592,8 +588,6 @@ impl From<BranchId> for u32 {
             BranchId::YBlossom => 0x8e47_1bd6,
             BranchId::YHeartwood => 0x6631_4da3,
             BranchId::YCanopy => 0x19bd_2d2f,
-            BranchId::POverwinter => 0x6f76_727a,
-            BranchId::PSapling => 0x7361_707a,
             BranchId::Nu5 => 0xc2d6_d0b4,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => 0xffff_ffff,

@@ -227,10 +227,9 @@ impl TxVersion {
     pub fn suggested_for_branch(consensus_branch_id: BranchId) -> Self {
         match consensus_branch_id {
             BranchId::Sprout => TxVersion::Sprout(2),
-            BranchId::Overwinter | BranchId::POverwinter => TxVersion::Overwinter,
+            BranchId::Overwinter => TxVersion::Overwinter,
             BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy |
-            BranchId::Ycash | BranchId::YBlossom | BranchId::YHeartwood | BranchId::YCanopy |
-            BranchId::PSapling => {
+            BranchId::Ycash | BranchId::YBlossom | BranchId::YHeartwood | BranchId::YCanopy => {
                 TxVersion::Sapling
             }
             BranchId::Nu5 => TxVersion::Zip225,
