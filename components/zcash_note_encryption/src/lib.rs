@@ -114,10 +114,10 @@ pub trait Domain {
     type PreparedEphemeralPublicKey;
     type SharedSecret;
     type SymmetricKey: AsRef<[u8]>;
-    type Note;
-    type Recipient;
+    type Note: Clone;
+    type Recipient: Clone;
     type DiversifiedTransmissionKey;
-    type IncomingViewingKey;
+    type IncomingViewingKey: Clone;
     type OutgoingViewingKey;
     type ValueCommitment;
     type ExtractedCommitment;
