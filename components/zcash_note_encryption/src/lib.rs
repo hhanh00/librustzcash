@@ -114,11 +114,11 @@ pub trait Domain {
     type PreparedEphemeralPublicKey;
     type SharedSecret;
     type SymmetricKey: AsRef<[u8]>;
-    type Note: Clone;
-    type Recipient: Clone;
+    type Note: Clone + Send;
+    type Recipient: Clone + Send;
     type DiversifiedTransmissionKey;
-    type IncomingViewingKey: Clone;
-    type OutgoingViewingKey;
+    type IncomingViewingKey: Clone + Send;
+    type OutgoingViewingKey: Clone + Send;
     type ValueCommitment;
     type ExtractedCommitment;
     type ExtractedCommitmentBytes: Eq + for<'a> From<&'a Self::ExtractedCommitment>;

@@ -2,8 +2,9 @@
 
 use bellman::groth16::{Parameters, PreparedVerifyingKey};
 use bls12_381::Bls12;
-use std::path::Path;
 use rand_core::OsRng;
+use std::path::Path;
+use group::ff::Field;
 use zcash_primitives::{
     merkle_tree::MerklePath,
     sapling::{
@@ -18,7 +19,7 @@ use crate::{load_parameters, parse_parameters, sapling::SaplingProvingContext};
 
 #[cfg(feature = "local-prover")]
 use crate::{default_params_folder, SAPLING_OUTPUT_NAME, SAPLING_SPEND_NAME};
-use ff::Field;
+
 /// An implementation of [`TxProver`] using Sapling Spend and Output parameters from
 /// locally-accessible paths.
 pub struct LocalTxProver {
@@ -159,7 +160,17 @@ impl TxProver for LocalTxProver {
         // We create the randomness of the value commitment
         let mut rng = OsRng;
         let rcv = jubjub::Fr::random(&mut rng);
-        self.spend_proof_with_rcv(ctx, rcv, proof_generation_key, diversifier, rseed, ar, value, anchor, merkle_path)
+        self.spend_proof_with_rcv(
+            ctx,
+            rcv,
+            proof_generation_key,
+            diversifier,
+            rseed,
+            ar,
+            value,
+            anchor,
+            merkle_path,
+        )
     }
 
     fn spend_proof_with_rcv(
@@ -222,7 +233,8 @@ impl TxProver for LocalTxProver {
         rcm: jubjub::Fr,
         value: u64,
     ) -> ([u8; GROTH_PROOF_SIZE], jubjub::ExtendedPoint) {
-        let (proof, cv) = ctx.output_proof_with_rcv(rcv, esk, payment_address, rcm, value, &self.output_params);
+        let (proof, cv) =
+            ctx.output_proof_with_rcv(rcv, esk, payment_address, rcm, value, &self.output_params);
 
         let mut zkproof = [0u8; GROTH_PROOF_SIZE];
         proof

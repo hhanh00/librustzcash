@@ -57,7 +57,7 @@ impl SealedItem for Receiver {
 
 /// A Unified Address.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Address(pub(crate) Vec<Receiver>);
+pub struct Address(pub Vec<Receiver>);
 
 impl super::private::SealedContainer for Address {
     /// The HRP for a Bech32m-encoded mainnet Unified Address.

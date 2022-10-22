@@ -397,6 +397,9 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => Some(zcash_address::Network::Main),
             Network::TestNetwork => Some(zcash_address::Network::Test),
+            Network::YCashMainNetwork => Some(zcash_address::Network::Main),
+            Network::YCashTestNetwork => Some(zcash_address::Network::Test),
+            Network::PirateChainMainNetwork => Some(zcash_address::Network::Main),
         }
     }
 
@@ -482,7 +485,7 @@ pub enum NetworkUpgrade {
     ///
     /// [Nu5]: https://z.cash/upgrade/nu5/
     Nu5,
-    
+
     /// The ZFUTURE network upgrade.
     ///
     /// This upgrade is expected never to activate on mainnet;
@@ -510,15 +513,14 @@ impl fmt::Display for NetworkUpgrade {
     }
 }
 
-const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] =
-    &[
-        NetworkUpgrade::Overwinter,
-        NetworkUpgrade::Sapling,
-        NetworkUpgrade::Blossom,
-        NetworkUpgrade::Heartwood,
-        NetworkUpgrade::Canopy,
-        NetworkUpgrade::Nu5,
-    ];
+const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
+    NetworkUpgrade::Overwinter,
+    NetworkUpgrade::Sapling,
+    NetworkUpgrade::Blossom,
+    NetworkUpgrade::Heartwood,
+    NetworkUpgrade::Canopy,
+    NetworkUpgrade::Nu5,
+];
 
 impl NetworkUpgrade {
     fn branch_id<P: Parameters>(self, parameters: &P) -> BranchId {
@@ -729,12 +731,10 @@ pub mod testing {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
     use crate::consensus::ZCASH_UPGRADES_IN_ORDER;
+    use std::convert::TryFrom;
 
-    use super::{
-        BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK,
-    };
+    use super::{BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK};
 
     #[test]
     fn nu_ordering() {

@@ -87,7 +87,9 @@ pub trait TxProver {
 
 #[cfg(any(test, feature = "test-dependencies"))]
 pub mod mock {
+    use bls12_381::Scalar;
     use ff::Field;
+    use jubjub::{ExtendedPoint, Fr};
     use rand_core::OsRng;
 
     use crate::{
@@ -135,6 +137,10 @@ pub mod mock {
             Ok(([0u8; GROTH_PROOF_SIZE], cv, rk))
         }
 
+        fn spend_proof_with_rcv(&self, ctx: &mut Self::SaplingProvingContext, rcv: Fr, proof_generation_key: ProofGenerationKey, diversifier: Diversifier, rseed: Rseed, ar: Fr, value: u64, anchor: Scalar, merkle_path: MerklePath<Node>) -> Result<([u8; GROTH_PROOF_SIZE], ExtendedPoint, PublicKey), ()> {
+            unimplemented!()
+        }
+
         fn output_proof(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
@@ -153,6 +159,10 @@ pub mod mock {
             .into();
 
             ([0u8; GROTH_PROOF_SIZE], cv)
+        }
+
+        fn output_proof_with_rcv(&self, ctx: &mut Self::SaplingProvingContext, rcv: Fr, esk: Fr, payment_address: PaymentAddress, rcm: Fr, value: u64) -> ([u8; GROTH_PROOF_SIZE], ExtendedPoint) {
+            unimplemented!()
         }
 
         fn binding_sig(

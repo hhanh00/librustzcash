@@ -33,6 +33,10 @@ impl Parameters for MainNetwork {
         141
     }
 
+    fn address_network(&self) -> Option<zcash_address::Network> {
+        Some(zcash_address::Network::Main)
+    }
+
     fn hrp_sapling_extended_spending_key(&self) -> &str {
         constants::mainnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
     }

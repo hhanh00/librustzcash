@@ -47,6 +47,10 @@ impl Parameters for MainNetwork {
         347
     }
 
+    fn address_network(&self) -> Option<zcash_address::Network> {
+        Some(zcash_address::Network::Main)
+    }
+
     fn hrp_sapling_extended_spending_key(&self) -> &str {
         constants::mainnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
     }
@@ -104,6 +108,10 @@ impl Parameters for TestNetwork {
 
     fn coin_type(&self) -> u32 {
         347
+    }
+
+    fn address_network(&self) -> Option<zcash_address::Network> {
+        Some(zcash_address::Network::Test)
     }
 
     fn hrp_sapling_extended_spending_key(&self) -> &str {

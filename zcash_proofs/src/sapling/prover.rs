@@ -184,7 +184,6 @@ impl SaplingProvingContext {
         value: u64,
         proving_key: &Parameters<Bls12>,
     ) -> (Proof<Bls12>, jubjub::ExtendedPoint) {
-
         // Accumulate the value commitment randomness in the context
         {
             let mut tmp = rcv.neg(); // Outputs subtract from the total.

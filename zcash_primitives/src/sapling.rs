@@ -357,7 +357,7 @@ pub enum Rseed {
 }
 
 /// Typesafe wrapper for nullifier values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Nullifier(pub [u8; 32]);
 
 impl Nullifier {
