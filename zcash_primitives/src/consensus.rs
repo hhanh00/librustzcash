@@ -337,10 +337,78 @@ impl Parameters for TestNetwork {
     }
 }
 
+/// Marker struct for the test network.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct RegtestNetwork;
+
+pub const REGTEST_NETWORK: RegtestNetwork = RegtestNetwork;
+
+impl Parameters for RegtestNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Blossom => BranchId::Blossom,
+            NetworkUpgrade::Heartwood => BranchId::Heartwood,
+            NetworkUpgrade::Canopy => BranchId::Canopy,
+            NetworkUpgrade::Nu5 => BranchId::Nu5,
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => BranchId::ZFuture,
+            _ => unreachable!()
+        }
+    }
+
+    fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
+        match nu {
+            NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
+            NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
+            NetworkUpgrade::Blossom => Some(BlockHeight(584_000)),
+            NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
+            NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
+            NetworkUpgrade::Nu5 => Some(BlockHeight(1_842_420)),
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => None,
+        }
+    }
+
+    fn coin_type(&self) -> u32 {
+        constants::testnet::COIN_TYPE
+    }
+
+    fn address_network(&self) -> Option<zcash_address::Network> {
+        Some(zcash_address::Network::Regtest)
+    }
+
+    fn hrp_sapling_extended_spending_key(&self) -> &str {
+        constants::testnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
+    }
+
+    fn hrp_sapling_extended_full_viewing_key(&self) -> &str {
+        constants::testnet::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
+    }
+
+    fn hrp_sapling_payment_address(&self) -> &str {
+        constants::testnet::HRP_SAPLING_PAYMENT_ADDRESS
+    }
+
+    fn b58_pubkey_address_prefix(&self) -> [u8; 2] {
+        constants::testnet::B58_PUBKEY_ADDRESS_PREFIX
+    }
+
+    fn b58_script_address_prefix(&self) -> [u8; 2] {
+        constants::testnet::B58_SCRIPT_ADDRESS_PREFIX
+    }
+}
+
+
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum Network {
     MainNetwork,
     TestNetwork,
+    RegtestNetwork,
     YCashMainNetwork,
     YCashTestNetwork,
     PirateChainMainNetwork,
@@ -357,6 +425,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.upgrades_in_order(),
             Network::TestNetwork => TEST_NETWORK.upgrades_in_order(),
+            Network::RegtestNetwork => REGTEST_NETWORK.upgrades_in_order(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.upgrades_in_order(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.upgrades_in_order(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.upgrades_in_order(),
@@ -367,6 +436,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.branch_id(nu),
             Network::TestNetwork => TEST_NETWORK.branch_id(nu),
+            Network::RegtestNetwork => REGTEST_NETWORK.branch_id(nu),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.branch_id(nu),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.branch_id(nu),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.branch_id(nu),
@@ -377,6 +447,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.activation_height(nu),
             Network::TestNetwork => TEST_NETWORK.activation_height(nu),
+            Network::RegtestNetwork => REGTEST_NETWORK.activation_height(nu),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.activation_height(nu),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.activation_height(nu),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.activation_height(nu),
@@ -387,6 +458,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.coin_type(),
             Network::TestNetwork => TEST_NETWORK.coin_type(),
+            Network::RegtestNetwork => REGTEST_NETWORK.coin_type(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.coin_type(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.coin_type(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.coin_type(),
@@ -397,6 +469,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => Some(zcash_address::Network::Main),
             Network::TestNetwork => Some(zcash_address::Network::Test),
+            Network::RegtestNetwork => Some(zcash_address::Network::Regtest),
             Network::YCashMainNetwork => Some(zcash_address::Network::Main),
             Network::YCashTestNetwork => Some(zcash_address::Network::Test),
             Network::PirateChainMainNetwork => Some(zcash_address::Network::Main),
@@ -407,6 +480,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_spending_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_extended_spending_key(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_spending_key(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
@@ -417,6 +491,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
@@ -427,6 +502,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_payment_address(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_payment_address(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_payment_address(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_payment_address(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_payment_address(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_payment_address(),
@@ -437,6 +513,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_pubkey_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_pubkey_address_prefix(),
+            Network::RegtestNetwork => REGTEST_NETWORK.b58_pubkey_address_prefix(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_pubkey_address_prefix(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_pubkey_address_prefix(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.b58_pubkey_address_prefix(),
@@ -447,6 +524,7 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_script_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_script_address_prefix(),
+            Network::RegtestNetwork => REGTEST_NETWORK.b58_script_address_prefix(),
             Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_script_address_prefix(),
             Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_script_address_prefix(),
             Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.b58_script_address_prefix(),
