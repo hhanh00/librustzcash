@@ -362,20 +362,20 @@ impl Parameters for RegtestNetwork {
 
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
-            NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
-            NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
-            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
-            NetworkUpgrade::Blossom => Some(BlockHeight(584_000)),
-            NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
-            NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
-            NetworkUpgrade::Nu5 => Some(BlockHeight(1_842_420)),
+            NetworkUpgrade::Overwinter => Some(BlockHeight(1)),
+            NetworkUpgrade::Sapling => Some(BlockHeight(1)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(1)),
+            NetworkUpgrade::Blossom => Some(BlockHeight(1)),
+            NetworkUpgrade::Heartwood => Some(BlockHeight(1)),
+            NetworkUpgrade::Canopy => Some(BlockHeight(1)),
+            NetworkUpgrade::Nu5 => Some(BlockHeight(1)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
     }
 
     fn coin_type(&self) -> u32 {
-        constants::testnet::COIN_TYPE
+        constants::regtest::COIN_TYPE
     }
 
     fn address_network(&self) -> Option<zcash_address::Network> {
@@ -383,23 +383,23 @@ impl Parameters for RegtestNetwork {
     }
 
     fn hrp_sapling_extended_spending_key(&self) -> &str {
-        constants::testnet::HRP_SAPLING_EXTENDED_SPENDING_KEY
+        constants::regtest::HRP_SAPLING_EXTENDED_SPENDING_KEY
     }
 
     fn hrp_sapling_extended_full_viewing_key(&self) -> &str {
-        constants::testnet::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
+        constants::regtest::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
     }
 
     fn hrp_sapling_payment_address(&self) -> &str {
-        constants::testnet::HRP_SAPLING_PAYMENT_ADDRESS
+        constants::regtest::HRP_SAPLING_PAYMENT_ADDRESS
     }
 
     fn b58_pubkey_address_prefix(&self) -> [u8; 2] {
-        constants::testnet::B58_PUBKEY_ADDRESS_PREFIX
+        constants::regtest::B58_PUBKEY_ADDRESS_PREFIX
     }
 
     fn b58_script_address_prefix(&self) -> [u8; 2] {
-        constants::testnet::B58_SCRIPT_ADDRESS_PREFIX
+        constants::regtest::B58_SCRIPT_ADDRESS_PREFIX
     }
 }
 

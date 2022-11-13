@@ -118,8 +118,8 @@ pub struct Builder<'a, P, R> {
     target_height: BlockHeight,
     expiry_height: BlockHeight,
     fee: Amount,
-    transparent_builder: TransparentBuilder,
-    sapling_builder: SaplingBuilder<P>,
+    pub transparent_builder: TransparentBuilder,
+    pub sapling_builder: SaplingBuilder<P>,
     change_address: Option<ChangeAddress>,
     #[cfg(feature = "zfuture")]
     tze_builder: TzeBuilder<'a, TransactionData<Unauthorized>>,
