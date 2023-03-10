@@ -15,7 +15,7 @@ pub use kind::unified;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ZcashAddress {
     net: Network,
-    kind: AddressKind,
+    pub kind: AddressKind,
 }
 
 /// The Zcash network for which an address is encoded.
@@ -34,7 +34,7 @@ pub enum Network {
 
 /// Known kinds of Zcash addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum AddressKind {
+pub enum AddressKind {
     Sprout(kind::sprout::Data),
     Sapling(kind::sapling::Data),
     Unified(unified::Address),

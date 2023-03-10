@@ -66,8 +66,7 @@ pub struct Node {
 }
 
 impl Node {
-    #[cfg(test)]
-    pub(crate) fn new(repr: [u8; 32]) -> Self {
+    pub fn new(repr: [u8; 32]) -> Self {
         Node { repr }
     }
 

@@ -98,9 +98,9 @@ impl MapAuth<Authorized, Authorized> for () {
 
 #[derive(Debug, Clone)]
 pub struct Bundle<A: Authorization> {
-    shielded_spends: Vec<SpendDescription<A>>,
-    shielded_outputs: Vec<OutputDescription<A::OutputProof>>,
-    value_balance: Amount,
+    pub shielded_spends: Vec<SpendDescription<A>>,
+    pub shielded_outputs: Vec<OutputDescription<A::OutputProof>>,
+    pub value_balance: Amount,
     authorization: A,
 }
 
@@ -196,7 +196,7 @@ impl<A: Authorization> Bundle<A> {
 pub struct SpendDescription<A: Authorization> {
     cv: ValueCommitment,
     anchor: bls12_381::Scalar,
-    nullifier: Nullifier,
+    pub nullifier: Nullifier,
     rk: PublicKey,
     zkproof: A::SpendProof,
     spend_auth_sig: A::AuthSig,
