@@ -40,11 +40,11 @@ impl Rseed {
 #[derive(Clone, Debug)]
 pub struct Note {
     /// The recipient of the funds.
-    recipient: PaymentAddress,
+    pub recipient: PaymentAddress,
     /// The value of this note.
-    value: NoteValue,
+    pub value: NoteValue,
     /// The seed randomness for various note components.
-    rseed: Rseed,
+    pub rseed: Rseed,
 }
 
 impl PartialEq for Note {

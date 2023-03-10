@@ -106,9 +106,9 @@ impl<Node: Hashable> PathFiller<Node> {
 /// commitment tree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommitmentTree<Node> {
-    pub(crate) left: Option<Node>,
-    pub(crate) right: Option<Node>,
-    pub(crate) parents: Vec<Option<Node>>,
+    pub left: Option<Node>,
+    pub right: Option<Node>,
+    pub parents: Vec<Option<Node>>,
 }
 
 impl<Node> CommitmentTree<Node> {
@@ -336,10 +336,10 @@ impl<Node: Hashable> CommitmentTree<Node> {
 /// ```
 #[derive(Clone)]
 pub struct IncrementalWitness<Node: Hashable> {
-    tree: CommitmentTree<Node>,
-    filled: Vec<Node>,
+    pub tree: CommitmentTree<Node>,
+    pub filled: Vec<Node>,
     cursor_depth: usize,
-    cursor: Option<CommitmentTree<Node>>,
+    pub cursor: Option<CommitmentTree<Node>>,
 }
 
 impl<Node: Hashable> IncrementalWitness<Node> {

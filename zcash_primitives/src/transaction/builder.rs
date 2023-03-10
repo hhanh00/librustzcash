@@ -139,8 +139,8 @@ pub struct Builder<'a, P, R> {
     rng: R,
     target_height: BlockHeight,
     expiry_height: BlockHeight,
-    transparent_builder: TransparentBuilder,
-    sapling_builder: SaplingBuilder<P>,
+    pub transparent_builder: TransparentBuilder,
+    pub sapling_builder: SaplingBuilder<P>,
     #[cfg(feature = "zfuture")]
     tze_builder: TzeBuilder<'a, TransactionData<Unauthorized>>,
     #[cfg(not(feature = "zfuture"))]

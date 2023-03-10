@@ -98,6 +98,7 @@ where
     Some((note, to))
 }
 
+#[derive(Clone)]
 pub struct SaplingDomain<P: consensus::Parameters> {
     params: P,
     height: BlockHeight,
