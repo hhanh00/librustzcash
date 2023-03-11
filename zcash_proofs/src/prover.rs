@@ -2,7 +2,10 @@
 
 use bellman::groth16::{Parameters, PreparedVerifyingKey};
 use bls12_381::Bls12;
+use group::ff::Field;
+use rand_core::OsRng;
 use std::path::Path;
+use zcash_primitives::sapling::value::ValueCommitTrapdoor;
 use zcash_primitives::{
     merkle_tree::MerklePath,
     sapling::{
@@ -156,7 +159,36 @@ impl TxProver for LocalTxProver {
         anchor: bls12_381::Scalar,
         merkle_path: MerklePath<Node>,
     ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()> {
+        // We create the randomness of the value commitment
+        let mut rng = OsRng;
+        let rcv = ValueCommitTrapdoor::random(&mut rng);
+        self.spend_proof_with_rcv(
+            ctx,
+            rcv,
+            proof_generation_key,
+            diversifier,
+            rseed,
+            ar,
+            value,
+            anchor,
+            merkle_path,
+        )
+    }
+
+    fn spend_proof_with_rcv(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        rcv: ValueCommitTrapdoor,
+        proof_generation_key: ProofGenerationKey,
+        diversifier: Diversifier,
+        rseed: Rseed,
+        ar: jubjub::Fr,
+        value: u64,
+        anchor: bls12_381::Scalar,
+        merkle_path: MerklePath<Node>,
+    ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()> {
         let (proof, cv, rk) = ctx.spend_proof(
+            rcv.inner(),
             proof_generation_key,
             diversifier,
             rseed,
@@ -185,6 +217,26 @@ impl TxProver for LocalTxProver {
         value: u64,
     ) -> ([u8; GROTH_PROOF_SIZE], ValueCommitment) {
         let (proof, cv) = ctx.output_proof(esk, payment_address, rcm, value, &self.output_params);
+
+        let mut zkproof = [0u8; GROTH_PROOF_SIZE];
+        proof
+            .write(&mut zkproof[..])
+            .expect("should be able to serialize a proof");
+
+        (zkproof, cv)
+    }
+
+    fn output_proof_with_rcv(
+        &self,
+        ctx: &mut Self::SaplingProvingContext,
+        rcv: ValueCommitTrapdoor,
+        esk: jubjub::Fr,
+        payment_address: PaymentAddress,
+        rcm: jubjub::Fr,
+        value: u64,
+    ) -> ([u8; GROTH_PROOF_SIZE], ValueCommitment) {
+        let (proof, cv) =
+            ctx.output_proof_with_rcv(rcv, esk, payment_address, rcm, value, &self.output_params);
 
         let mut zkproof = [0u8; GROTH_PROOF_SIZE];
         proof
