@@ -2,6 +2,10 @@
 
 use std::convert::TryFrom;
 
+use crate::encoding::{
+    decode_payment_address, decode_transparent_address, encode_payment_address,
+    encode_transparent_address,
+};
 use zcash_address::{
     unified::{self, Container, Encoding},
     ConversionError, Network, ToAddress, TryFromRawAddress, ZcashAddress,
@@ -228,25 +232,45 @@ impl TryFromRawAddress for RecipientAddress {
 
 impl RecipientAddress {
     pub fn decode<P: consensus::Parameters>(params: &P, s: &str) -> Option<Self> {
-        let addr = ZcashAddress::try_from_encoded(s).ok()?;
-        addr.convert_if_network(params.address_network().expect("Unrecognized network"))
-            .ok()
+        // Cannot use ZcashAddress parser because it will always try to decode zcash sapling
+        let s = s.trim();
+        if let Ok(pa) = decode_payment_address(params.hrp_sapling_payment_address(), s) {
+            return Some(RecipientAddress::Shielded(pa));
+        }
+        if let Ok(Some(ta)) = decode_transparent_address(
+            &params.b58_pubkey_address_prefix(),
+            &params.b58_script_address_prefix(),
+            s,
+        ) {
+            return Some(RecipientAddress::Transparent(ta));
+        }
+        if let Ok((_net, data)) = unified::Address::decode(s) {
+            let ua = UnifiedAddress::try_from(data).unwrap();
+            return Some(RecipientAddress::Unified(ua));
+        }
+        None
     }
 
     pub fn encode<P: consensus::Parameters>(&self, params: &P) -> String {
         let net = params.address_network().expect("Unrecognized network");
 
         match self {
-            RecipientAddress::Shielded(pa) => ZcashAddress::from_sapling(net, pa.to_bytes()),
+            RecipientAddress::Shielded(pa) => {
+                // we do these the old way because ZcashAddress does not support other forks
+                encode_payment_address(params.hrp_sapling_payment_address(), pa)
+            }
             RecipientAddress::Transparent(addr) => match addr {
-                TransparentAddress::PublicKey(data) => {
-                    ZcashAddress::from_transparent_p2pkh(net, *data)
+                TransparentAddress::PublicKey(_data) => encode_transparent_address(
+                    &params.b58_pubkey_address_prefix(),
+                    &params.b58_script_address_prefix(),
+                    &addr,
+                ),
+                TransparentAddress::Script(data) => {
+                    ZcashAddress::from_transparent_p2sh(net, *data).to_string()
                 }
-                TransparentAddress::Script(data) => ZcashAddress::from_transparent_p2sh(net, *data),
             },
-            RecipientAddress::Unified(ua) => ua.to_address(net),
+            RecipientAddress::Unified(ua) => ua.to_address(net).to_string(),
         }
-        .to_string()
     }
 }
 
