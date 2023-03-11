@@ -129,6 +129,11 @@ impl Sub for BlockHeight {
 
 /// Zcash consensus parameters.
 pub trait Parameters: Clone {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade];
+
+    /// Returns the branch id for a given network upgrade
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId;
+
     /// Returns the activation height for a particular network upgrade,
     /// if an activation height has been set.
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight>;
@@ -189,6 +194,13 @@ pub trait Parameters: Clone {
     fn b58_script_address_prefix(&self) -> [u8; 2];
 }
 
+mod ycash;
+mod piratechain;
+
+pub const YCASH_MAIN_NETWORK: ycash::MainNetwork = ycash::MainNetwork;
+pub const YCASH_TEST_NETWORK: ycash::TestNetwork = ycash::TestNetwork;
+pub const PIRATECHAIN_MAIN_NETWORK: piratechain::MainNetwork = piratechain::MainNetwork;
+
 /// Marker struct for the production network.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct MainNetwork;
@@ -198,10 +210,27 @@ memuse::impl_no_dynamic_usage!(MainNetwork);
 pub const MAIN_NETWORK: MainNetwork = MainNetwork;
 
 impl Parameters for MainNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Blossom => BranchId::Blossom,
+            NetworkUpgrade::Heartwood => BranchId::Heartwood,
+            NetworkUpgrade::Canopy => BranchId::Canopy,
+            NetworkUpgrade::Nu5 => BranchId::Nu5,
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => BranchId::ZFuture,
+            _ => unreachable!()
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(347_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(419_200)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
             NetworkUpgrade::Blossom => Some(BlockHeight(653_600)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_000)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_046_400)),
@@ -249,10 +278,27 @@ memuse::impl_no_dynamic_usage!(TestNetwork);
 pub const TEST_NETWORK: TestNetwork = TestNetwork;
 
 impl Parameters for TestNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Blossom => BranchId::Blossom,
+            NetworkUpgrade::Heartwood => BranchId::Heartwood,
+            NetworkUpgrade::Canopy => BranchId::Canopy,
+            NetworkUpgrade::Nu5 => BranchId::Nu5,
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => BranchId::ZFuture,
+            _ => unreachable!()
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match nu {
             NetworkUpgrade::Overwinter => Some(BlockHeight(207_500)),
             NetworkUpgrade::Sapling => Some(BlockHeight(280_000)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(510_248)),
             NetworkUpgrade::Blossom => Some(BlockHeight(584_000)),
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
@@ -291,19 +337,120 @@ impl Parameters for TestNetwork {
     }
 }
 
+/// Marker struct for the test network.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct RegtestNetwork;
+
+pub const REGTEST_NETWORK: RegtestNetwork = RegtestNetwork;
+
+impl Parameters for RegtestNetwork {
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] { ZCASH_UPGRADES_IN_ORDER }
+
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match nu {
+            NetworkUpgrade::Overwinter => BranchId::Overwinter,
+            NetworkUpgrade::Sapling => BranchId::Sapling,
+            NetworkUpgrade::Blossom => BranchId::Blossom,
+            NetworkUpgrade::Heartwood => BranchId::Heartwood,
+            NetworkUpgrade::Canopy => BranchId::Canopy,
+            NetworkUpgrade::Nu5 => BranchId::Nu5,
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => BranchId::ZFuture,
+            _ => unreachable!()
+        }
+    }
+
+    fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
+        match nu {
+            NetworkUpgrade::Overwinter => Some(BlockHeight(1)),
+            NetworkUpgrade::Sapling => Some(BlockHeight(1)),
+            NetworkUpgrade::Ycash => Some(BlockHeight(1)),
+            NetworkUpgrade::Blossom => Some(BlockHeight(1)),
+            NetworkUpgrade::Heartwood => Some(BlockHeight(1)),
+            NetworkUpgrade::Canopy => Some(BlockHeight(1)),
+            NetworkUpgrade::Nu5 => Some(BlockHeight(1)),
+            #[cfg(feature = "zfuture")]
+            NetworkUpgrade::ZFuture => None,
+        }
+    }
+
+    fn coin_type(&self) -> u32 {
+        constants::regtest::COIN_TYPE
+    }
+
+    fn address_network(&self) -> Option<zcash_address::Network> {
+        Some(zcash_address::Network::Regtest)
+    }
+
+    fn hrp_sapling_extended_spending_key(&self) -> &str {
+        constants::regtest::HRP_SAPLING_EXTENDED_SPENDING_KEY
+    }
+
+    fn hrp_sapling_extended_full_viewing_key(&self) -> &str {
+        constants::regtest::HRP_SAPLING_EXTENDED_FULL_VIEWING_KEY
+    }
+
+    fn hrp_sapling_payment_address(&self) -> &str {
+        constants::regtest::HRP_SAPLING_PAYMENT_ADDRESS
+    }
+
+    fn b58_pubkey_address_prefix(&self) -> [u8; 2] {
+        constants::regtest::B58_PUBKEY_ADDRESS_PREFIX
+    }
+
+    fn b58_script_address_prefix(&self) -> [u8; 2] {
+        constants::regtest::B58_SCRIPT_ADDRESS_PREFIX
+    }
+}
+
+
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum Network {
     MainNetwork,
     TestNetwork,
+    RegtestNetwork,
+    YCashMainNetwork,
+    YCashTestNetwork,
+    PirateChainMainNetwork,
 }
 
 memuse::impl_no_dynamic_usage!(Network);
 
 impl Parameters for Network {
+    /// The network upgrades on the Zcash chain in order of activation.
+    ///
+    /// This order corresponds to the activation heights, but because Rust enums are
+    /// full-fledged algebraic data types, we need to define it manually.
+    fn upgrades_in_order(&self) -> &'static [NetworkUpgrade] {
+        match self {
+            Network::MainNetwork => MAIN_NETWORK.upgrades_in_order(),
+            Network::TestNetwork => TEST_NETWORK.upgrades_in_order(),
+            Network::RegtestNetwork => REGTEST_NETWORK.upgrades_in_order(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.upgrades_in_order(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.upgrades_in_order(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.upgrades_in_order(),
+        }
+    }
+
+    fn branch_id(&self, nu: NetworkUpgrade) -> BranchId {
+        match self {
+            Network::MainNetwork => MAIN_NETWORK.branch_id(nu),
+            Network::TestNetwork => TEST_NETWORK.branch_id(nu),
+            Network::RegtestNetwork => REGTEST_NETWORK.branch_id(nu),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.branch_id(nu),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.branch_id(nu),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.branch_id(nu),
+        }
+    }
+
     fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
         match self {
             Network::MainNetwork => MAIN_NETWORK.activation_height(nu),
             Network::TestNetwork => TEST_NETWORK.activation_height(nu),
+            Network::RegtestNetwork => REGTEST_NETWORK.activation_height(nu),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.activation_height(nu),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.activation_height(nu),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.activation_height(nu),
         }
     }
 
@@ -311,6 +458,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.coin_type(),
             Network::TestNetwork => TEST_NETWORK.coin_type(),
+            Network::RegtestNetwork => REGTEST_NETWORK.coin_type(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.coin_type(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.coin_type(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.coin_type(),
         }
     }
 
@@ -318,6 +469,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => Some(zcash_address::Network::Main),
             Network::TestNetwork => Some(zcash_address::Network::Test),
+            Network::RegtestNetwork => Some(zcash_address::Network::Regtest),
+            Network::YCashMainNetwork => Some(zcash_address::Network::Main),
+            Network::YCashTestNetwork => Some(zcash_address::Network::Test),
+            Network::PirateChainMainNetwork => Some(zcash_address::Network::Main),
         }
     }
 
@@ -325,6 +480,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_spending_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_spending_key(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_extended_spending_key(),
         }
     }
 
@@ -332,6 +491,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_extended_full_viewing_key(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_extended_full_viewing_key(),
         }
     }
 
@@ -339,6 +502,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.hrp_sapling_payment_address(),
             Network::TestNetwork => TEST_NETWORK.hrp_sapling_payment_address(),
+            Network::RegtestNetwork => REGTEST_NETWORK.hrp_sapling_payment_address(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.hrp_sapling_payment_address(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.hrp_sapling_payment_address(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.hrp_sapling_payment_address(),
         }
     }
 
@@ -346,6 +513,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_pubkey_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_pubkey_address_prefix(),
+            Network::RegtestNetwork => REGTEST_NETWORK.b58_pubkey_address_prefix(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_pubkey_address_prefix(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_pubkey_address_prefix(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.b58_pubkey_address_prefix(),
         }
     }
 
@@ -353,6 +524,10 @@ impl Parameters for Network {
         match self {
             Network::MainNetwork => MAIN_NETWORK.b58_script_address_prefix(),
             Network::TestNetwork => TEST_NETWORK.b58_script_address_prefix(),
+            Network::RegtestNetwork => REGTEST_NETWORK.b58_script_address_prefix(),
+            Network::YCashMainNetwork => YCASH_MAIN_NETWORK.b58_script_address_prefix(),
+            Network::YCashTestNetwork => YCASH_TEST_NETWORK.b58_script_address_prefix(),
+            Network::PirateChainMainNetwork => PIRATECHAIN_MAIN_NETWORK.b58_script_address_prefix(),
         }
     }
 }
@@ -371,6 +546,7 @@ pub enum NetworkUpgrade {
     ///
     /// [Sapling]: https://z.cash/upgrade/sapling/
     Sapling,
+    Ycash,
     /// The [Blossom] network upgrade.
     ///
     /// [Blossom]: https://z.cash/upgrade/blossom/
@@ -387,6 +563,7 @@ pub enum NetworkUpgrade {
     ///
     /// [Nu5]: https://z.cash/upgrade/nu5/
     Nu5,
+
     /// The ZFUTURE network upgrade.
     ///
     /// This upgrade is expected never to activate on mainnet;
@@ -403,6 +580,7 @@ impl fmt::Display for NetworkUpgrade {
         match self {
             NetworkUpgrade::Overwinter => write!(f, "Overwinter"),
             NetworkUpgrade::Sapling => write!(f, "Sapling"),
+            NetworkUpgrade::Ycash => write!(f, "Ycash"),
             NetworkUpgrade::Blossom => write!(f, "Blossom"),
             NetworkUpgrade::Heartwood => write!(f, "Heartwood"),
             NetworkUpgrade::Canopy => write!(f, "Canopy"),
@@ -413,26 +591,7 @@ impl fmt::Display for NetworkUpgrade {
     }
 }
 
-impl NetworkUpgrade {
-    fn branch_id(self) -> BranchId {
-        match self {
-            NetworkUpgrade::Overwinter => BranchId::Overwinter,
-            NetworkUpgrade::Sapling => BranchId::Sapling,
-            NetworkUpgrade::Blossom => BranchId::Blossom,
-            NetworkUpgrade::Heartwood => BranchId::Heartwood,
-            NetworkUpgrade::Canopy => BranchId::Canopy,
-            NetworkUpgrade::Nu5 => BranchId::Nu5,
-            #[cfg(feature = "zfuture")]
-            NetworkUpgrade::ZFuture => BranchId::ZFuture,
-        }
-    }
-}
-
-/// The network upgrades on the Zcash chain in order of activation.
-///
-/// This order corresponds to the activation heights, but because Rust enums are
-/// full-fledged algebraic data types, we need to define it manually.
-const UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
+const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
     NetworkUpgrade::Overwinter,
     NetworkUpgrade::Sapling,
     NetworkUpgrade::Blossom,
@@ -440,6 +599,28 @@ const UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
     NetworkUpgrade::Canopy,
     NetworkUpgrade::Nu5,
 ];
+
+impl NetworkUpgrade {
+    fn branch_id<P: Parameters>(self, parameters: &P) -> BranchId {
+        parameters.branch_id(self)
+        // match self {
+        //     NetworkUpgrade::Overwinter => BranchId::Overwinter,
+        //     NetworkUpgrade::Sapling => BranchId::Sapling,
+        //     NetworkUpgrade::Ycash => BranchId::Ycash,
+        //     NetworkUpgrade::Blossom => BranchId::Blossom,
+        //     NetworkUpgrade::Heartwood => BranchId::Heartwood,
+        //     NetworkUpgrade::Canopy => BranchId::Canopy,
+        //     NetworkUpgrade::YBlossom => BranchId::YBlossom,
+        //     NetworkUpgrade::YHeartwood => BranchId::YHeartwood,
+        //     NetworkUpgrade::YCanopy => BranchId::YCanopy,
+        //     NetworkUpgrade::POverwinter => BranchId::POverwinter,
+        //     NetworkUpgrade::PSapling => BranchId::PSapling,
+        //     NetworkUpgrade::Nu5 => BranchId::Nu5,
+        //     #[cfg(feature = "zfuture")]
+        //     NetworkUpgrade::ZFuture => BranchId::ZFuture,
+        // }
+    }
+}
 
 pub const ZIP212_GRACE_PERIOD: u32 = 32256;
 
@@ -464,12 +645,16 @@ pub enum BranchId {
     Overwinter,
     /// The consensus rules deployed by [`NetworkUpgrade::Sapling`].
     Sapling,
+    Ycash,
     /// The consensus rules deployed by [`NetworkUpgrade::Blossom`].
     Blossom,
     /// The consensus rules deployed by [`NetworkUpgrade::Heartwood`].
     Heartwood,
     /// The consensus rules deployed by [`NetworkUpgrade::Canopy`].
     Canopy,
+    YBlossom,
+    YHeartwood,
+    YCanopy,
     /// The consensus rules deployed by [`NetworkUpgrade::Nu5`].
     Nu5,
     /// Candidates for future consensus rules; this branch will never
@@ -488,9 +673,13 @@ impl TryFrom<u32> for BranchId {
             0 => Ok(BranchId::Sprout),
             0x5ba8_1b19 => Ok(BranchId::Overwinter),
             0x76b8_09bb => Ok(BranchId::Sapling),
+            0x374d_694f => Ok(BranchId::Ycash),
             0x2bb4_0e60 => Ok(BranchId::Blossom),
             0xf5b9_230b => Ok(BranchId::Heartwood),
             0xe9ff_75a6 => Ok(BranchId::Canopy),
+            0x8e47_1bd6 => Ok(BranchId::YBlossom),
+            0x6631_4da3 => Ok(BranchId::YHeartwood),
+            0x19bd_2d2f => Ok(BranchId::YCanopy),
             0xc2d6_d0b4 => Ok(BranchId::Nu5),
             #[cfg(feature = "zfuture")]
             0xffff_ffff => Ok(BranchId::ZFuture),
@@ -505,9 +694,13 @@ impl From<BranchId> for u32 {
             BranchId::Sprout => 0,
             BranchId::Overwinter => 0x5ba8_1b19,
             BranchId::Sapling => 0x76b8_09bb,
+            BranchId::Ycash => 0x374d_694f,
             BranchId::Blossom => 0x2bb4_0e60,
             BranchId::Heartwood => 0xf5b9_230b,
             BranchId::Canopy => 0xe9ff_75a6,
+            BranchId::YBlossom => 0x8e47_1bd6,
+            BranchId::YHeartwood => 0x6631_4da3,
+            BranchId::YCanopy => 0x19bd_2d2f,
             BranchId::Nu5 => 0xc2d6_d0b4,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => 0xffff_ffff,
@@ -521,9 +714,9 @@ impl BranchId {
     ///
     /// This is the branch ID that should be used when creating transactions.
     pub fn for_height<P: Parameters>(parameters: &P, height: BlockHeight) -> Self {
-        for nu in UPGRADES_IN_ORDER.iter().rev() {
+        for nu in parameters.upgrades_in_order().iter().rev() {
             if parameters.is_nu_active(*nu, height) {
-                return nu.branch_id();
+                return nu.branch_id(parameters);
             }
         }
 
@@ -555,37 +748,22 @@ impl BranchId {
         &self,
         params: &P,
     ) -> Option<(BlockHeight, Option<BlockHeight>)> {
-        match self {
-            BranchId::Sprout => params
-                .activation_height(NetworkUpgrade::Overwinter)
-                .map(|upper| (BlockHeight(0), Some(upper))),
-            BranchId::Overwinter => params
-                .activation_height(NetworkUpgrade::Overwinter)
-                .map(|lower| (lower, params.activation_height(NetworkUpgrade::Sapling))),
-            BranchId::Sapling => params
-                .activation_height(NetworkUpgrade::Sapling)
-                .map(|lower| (lower, params.activation_height(NetworkUpgrade::Blossom))),
-            BranchId::Blossom => params
-                .activation_height(NetworkUpgrade::Blossom)
-                .map(|lower| (lower, params.activation_height(NetworkUpgrade::Heartwood))),
-            BranchId::Heartwood => params
-                .activation_height(NetworkUpgrade::Heartwood)
-                .map(|lower| (lower, params.activation_height(NetworkUpgrade::Canopy))),
-            BranchId::Canopy => params
-                .activation_height(NetworkUpgrade::Canopy)
-                .map(|lower| (lower, params.activation_height(NetworkUpgrade::Nu5))),
-            BranchId::Nu5 => params.activation_height(NetworkUpgrade::Nu5).map(|lower| {
-                #[cfg(feature = "zfuture")]
-                let upper = params.activation_height(NetworkUpgrade::ZFuture);
-                #[cfg(not(feature = "zfuture"))]
-                let upper = None;
-                (lower, upper)
-            }),
-            #[cfg(feature = "zfuture")]
-            BranchId::ZFuture => params
-                .activation_height(NetworkUpgrade::ZFuture)
-                .map(|lower| (lower, None)),
+        let network_upgrades = params.upgrades_in_order();
+        let n = network_upgrades.len();
+        for i in 0..n {
+            let nu = network_upgrades[i];
+            let next_activation_height =
+                if i != n - 1 {
+                    params.activation_height(network_upgrades[i + 1])
+                } else {
+                    None
+                };
+            let branch_id = params.branch_id(nu);
+            if *self == branch_id {
+                return Some((params.activation_height(nu).unwrap(), next_activation_height))
+            }
         }
+        None
     }
 
     pub fn sprout_uses_groth_proofs(&self) -> bool {
@@ -631,17 +809,16 @@ pub mod testing {
 
 #[cfg(test)]
 mod tests {
+    use crate::consensus::ZCASH_UPGRADES_IN_ORDER;
     use std::convert::TryFrom;
 
-    use super::{
-        BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK, UPGRADES_IN_ORDER,
-    };
+    use super::{BlockHeight, BranchId, NetworkUpgrade, Parameters, MAIN_NETWORK};
 
     #[test]
     fn nu_ordering() {
-        for i in 1..UPGRADES_IN_ORDER.len() {
-            let nu_a = UPGRADES_IN_ORDER[i - 1];
-            let nu_b = UPGRADES_IN_ORDER[i];
+        for i in 1..ZCASH_UPGRADES_IN_ORDER.len() {
+            let nu_a = ZCASH_UPGRADES_IN_ORDER[i - 1];
+            let nu_b = ZCASH_UPGRADES_IN_ORDER[i];
             match (
                 MAIN_NETWORK.activation_height(nu_a),
                 MAIN_NETWORK.activation_height(nu_b),
