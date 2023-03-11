@@ -628,6 +628,17 @@ impl ExtendedFullViewingKey {
             dk: self.dk,
         }
     }
+
+    pub fn from_diversifiable_full_viewing_key(dfvk: &DiversifiableFullViewingKey) -> Self {
+        Self {
+            depth: 0,
+            parent_fvk_tag: FvkFingerprint::from(&dfvk.fvk).tag(),
+            child_index: ChildIndex::from_index(0),
+            chain_code: ChainCode([0u8; 32]),
+            fvk: dfvk.fvk.clone(),
+            dk: dfvk.dk.clone(),
+        }
+    }
 }
 
 /// A Sapling key that provides the capability to view incoming and outgoing transactions.
