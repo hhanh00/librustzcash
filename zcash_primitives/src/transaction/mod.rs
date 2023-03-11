@@ -20,6 +20,7 @@ use std::fmt;
 use std::fmt::Debug;
 use std::io::{self, Read, Write};
 use std::ops::Deref;
+use orchard::builder::{Unproven, Unauthorized as OrchardUnauthorized};
 use zcash_encoding::{Array, CompactSize, Vector};
 
 use crate::{
@@ -233,9 +234,14 @@ impl TxVersion {
         match consensus_branch_id {
             BranchId::Sprout => TxVersion::Sprout(2),
             BranchId::Overwinter => TxVersion::Overwinter,
-            BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy => {
-                TxVersion::Sapling
-            }
+            BranchId::Sapling
+            | BranchId::Blossom
+            | BranchId::Heartwood
+            | BranchId::Canopy
+            | BranchId::Ycash
+            | BranchId::YBlossom
+            | BranchId::YHeartwood
+            | BranchId::YCanopy => TxVersion::Sapling,
             BranchId::Nu5 => TxVersion::Zip225,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => TxVersion::ZFuture,
@@ -270,7 +276,7 @@ pub struct Unauthorized;
 impl Authorization for Unauthorized {
     type TransparentAuth = transparent::builder::Unauthorized;
     type SaplingAuth = sapling::builder::Unauthorized;
-    type OrchardAuth = orchard_serialization::Unauthorized;
+    type OrchardAuth = orchard::builder::InProgress<Unproven, OrchardUnauthorized>;
 
     #[cfg(feature = "zfuture")]
     type TzeAuth = tze::builder::Unauthorized;
@@ -1082,7 +1088,8 @@ pub mod testing {
         match branch_id {
             BranchId::Sprout => (1..=2u32).prop_map(TxVersion::Sprout).boxed(),
             BranchId::Overwinter => Just(TxVersion::Overwinter).boxed(),
-            BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy => {
+            BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy |
+            BranchId::Ycash | BranchId::YBlossom | BranchId::YHeartwood | BranchId::YCanopy => {
                 Just(TxVersion::Sapling).boxed()
             }
             BranchId::Nu5 => Just(TxVersion::Zip225).boxed(),
