@@ -4,7 +4,7 @@ use bellman::{
 };
 use bls12_381::Bls12;
 use group::{Curve, GroupEncoding};
-use rand_core::OsRng;
+use rand_core::{OsRng, RngCore};
 use zcash_primitives::{
     constants::{SPENDING_KEY_GENERATOR, VALUE_COMMITMENT_RANDOMNESS_GENERATOR},
     merkle_tree::MerklePath,
@@ -44,11 +44,11 @@ impl SaplingProvingContext {
     /// SpendDescription, while accumulating its value commitment randomness
     /// inside the context for later use.
     #[allow(clippy::too_many_arguments)]
-    pub fn spend_proof(
+    pub fn spend_proof<R: RngCore>(
         &mut self,
-        rcv: jubjub::Fr,
         proof_generation_key: ProofGenerationKey,
         diversifier: Diversifier,
+        rcv: ValueCommitTrapdoor,
         rseed: Rseed,
         ar: jubjub::Fr,
         value: u64,
@@ -56,11 +56,8 @@ impl SaplingProvingContext {
         merkle_path: MerklePath<Node>,
         proving_key: &Parameters<Bls12>,
         verifying_key: &PreparedVerifyingKey<Bls12>,
+        mut rng: R,
     ) -> Result<(Proof<Bls12>, ValueCommitment, PublicKey), ()> {
-        // Initialize secure RNG
-        let mut rng = OsRng;
-        let rcv = ValueCommitTrapdoor::random(&mut rng);
-
         // Accumulate the value commitment randomness in the context
         self.bsk += &rcv;
 
@@ -133,7 +130,7 @@ impl SaplingProvingContext {
         }
 
         // Verify the proof
-        verify_proof(verifying_key, &proof, &public_input[..]).map_err(|_| ())?;
+        verify_proof(verifying_key, &proof, &public_input[..]).map_err(|_| ()).unwrap();
 
         // Accumulate the value commitment in the context
         self.cv_sum += &value_commitment;
@@ -141,21 +138,19 @@ impl SaplingProvingContext {
         Ok((proof, value_commitment, rk))
     }
 
-    pub fn output_proof(
+    pub fn output_proof<R: RngCore>(
         &mut self,
         esk: jubjub::Fr,
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,
         value: u64,
         proving_key: &Parameters<Bls12>,
+        rng: R,
     ) -> (Proof<Bls12>, ValueCommitment) {
-        // Initialize secure RNG
-        let mut rng = OsRng;
-
         // We construct ephemeral randomness for the value commitment. This
         // randomness is not given back to the caller, but the synthetic
         // blinding factor `bsk` is accumulated in the context.
-        let rcv = ValueCommitTrapdoor::random(&mut rng);
+        let rcv = ValueCommitTrapdoor::random(rng);
         self.output_proof_with_rcv(rcv, esk, payment_address, rcm, value, proving_key)
     }
 

@@ -115,7 +115,7 @@ impl ExpandedSpendingKey {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProofGenerationKey {
     pub ak: jubjub::SubgroupPoint,
     pub nsk: jubjub::Fr,
@@ -347,7 +347,7 @@ impl ConditionallySelectable for DiversifiedTransmissionKey {
 ///
 /// [concretesaplingkeyagreement]: https://zips.z.cash/protocol/protocol.pdf#concretesaplingkeyagreement
 #[derive(Debug)]
-pub struct EphemeralSecretKey(pub(crate) jubjub::Scalar);
+pub struct EphemeralSecretKey(pub jubjub::Scalar);
 
 impl ConstantTimeEq for EphemeralSecretKey {
     fn ct_eq(&self, other: &Self) -> subtle::Choice {
@@ -391,7 +391,7 @@ impl EphemeralPublicKey {
         jubjub::ExtendedPoint::from_bytes(bytes).map(EphemeralPublicKey)
     }
 
-    pub(crate) fn to_bytes(&self) -> EphemeralKeyBytes {
+    pub fn to_bytes(&self) -> EphemeralKeyBytes {
         EphemeralKeyBytes(self.0.to_bytes())
     }
 }

@@ -1,5 +1,7 @@
 //! Abstractions over the proving system and parameters.
 
+use rand_core::RngCore;
+
 use crate::{
     merkle_tree::MerklePath,
     sapling::{
@@ -25,7 +27,7 @@ pub trait TxProver {
     ///
     /// [`SpendDescription`]: crate::transaction::components::SpendDescription
     #[allow(clippy::too_many_arguments)]
-    fn spend_proof(
+    fn spend_proof<R: RngCore>(
         &self,
         ctx: &mut Self::SaplingProvingContext,
         proof_generation_key: ProofGenerationKey,
@@ -35,19 +37,7 @@ pub trait TxProver {
         value: u64,
         anchor: bls12_381::Scalar,
         merkle_path: MerklePath<Node>,
-    ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()>;
-
-    fn spend_proof_with_rcv(
-        &self,
-        ctx: &mut Self::SaplingProvingContext,
-        rcv: ValueCommitTrapdoor,
-        proof_generation_key: ProofGenerationKey,
-        diversifier: Diversifier,
-        rseed: Rseed,
-        ar: jubjub::Fr,
-        value: u64,
-        anchor: bls12_381::Scalar,
-        merkle_path: MerklePath<Node>,
+        rng: R,
     ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()>;
 
     /// Create the value commitment and proof for a Sapling [`OutputDescription`],
@@ -55,13 +45,14 @@ pub trait TxProver {
     /// use.
     ///
     /// [`OutputDescription`]: crate::transaction::components::OutputDescription
-    fn output_proof(
+    fn output_proof<R: RngCore>(
         &self,
         ctx: &mut Self::SaplingProvingContext,
         esk: jubjub::Fr,
         payment_address: PaymentAddress,
         rcm: jubjub::Fr,
         value: u64,
+        rng: R,
     ) -> ([u8; GROTH_PROOF_SIZE], ValueCommitment);
 
     fn output_proof_with_rcv(
@@ -89,7 +80,7 @@ pub trait TxProver {
 pub mod mock {
     use bls12_381::Scalar;
     use jubjub::{ExtendedPoint, Fr};
-    use rand_core::OsRng;
+    use rand_core::{OsRng, RngCore};
 
     use crate::{
         constants::SPENDING_KEY_GENERATOR,
@@ -111,7 +102,7 @@ pub mod mock {
 
         fn new_sapling_proving_context(&self) -> Self::SaplingProvingContext {}
 
-        fn spend_proof(
+        fn spend_proof<R: RngCore>(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
             proof_generation_key: ProofGenerationKey,
@@ -121,9 +112,8 @@ pub mod mock {
             value: u64,
             _anchor: bls12_381::Scalar,
             _merkle_path: MerklePath<Node>,
+            rng: R,
         ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()> {
-            let mut rng = OsRng;
-
             let value = NoteValue::from_raw(value);
             let rcv = ValueCommitTrapdoor::random(&mut rng);
             let cv = ValueCommitment::derive(value, rcv);
@@ -134,22 +124,17 @@ pub mod mock {
             Ok(([0u8; GROTH_PROOF_SIZE], cv, rk))
         }
 
-        fn spend_proof_with_rcv(&self, ctx: &mut Self::SaplingProvingContext, rcv: ValueCommitTrapdoor, proof_generation_key: ProofGenerationKey, diversifier: Diversifier, rseed: Rseed, ar: Fr, value: u64, anchor: Scalar, merkle_path: MerklePath<Node>) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()> {
-            unimplemented!()
-        }
-
-        fn output_proof(
+        fn output_proof<R: RngCore>(
             &self,
             _ctx: &mut Self::SaplingProvingContext,
             _esk: jubjub::Fr,
             _payment_address: PaymentAddress,
             _rcm: jubjub::Fr,
             value: u64,
+            rng: R,
         ) -> ([u8; GROTH_PROOF_SIZE], ValueCommitment) {
-            let mut rng = OsRng;
-
             let value = NoteValue::from_raw(value);
-            let rcv = ValueCommitTrapdoor::random(&mut rng);
+            let rcv = ValueCommitTrapdoor::random(rng);
             let cv = ValueCommitment::derive(value, rcv);
 
             ([0u8; GROTH_PROOF_SIZE], cv)

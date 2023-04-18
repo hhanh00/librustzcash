@@ -122,7 +122,7 @@ impl<A: Authorization> Bundle<A> {
     }
 
     /// Constructs a `Bundle` from its constituent parts.
-    pub(crate) fn from_parts(
+    pub fn from_parts(
         shielded_spends: Vec<SpendDescription<A>>,
         shielded_outputs: Vec<OutputDescription<A::OutputProof>>,
         value_balance: Amount,
@@ -194,12 +194,12 @@ impl<A: Authorization> Bundle<A> {
 
 #[derive(Clone)]
 pub struct SpendDescription<A: Authorization> {
-    cv: ValueCommitment,
-    anchor: bls12_381::Scalar,
+    pub cv: ValueCommitment,
+    pub anchor: bls12_381::Scalar,
     pub nullifier: Nullifier,
-    rk: PublicKey,
-    zkproof: A::SpendProof,
-    spend_auth_sig: A::AuthSig,
+    pub rk: PublicKey,
+    pub zkproof: A::SpendProof,
+    pub spend_auth_sig: A::AuthSig,
 }
 
 impl<A: Authorization> std::fmt::Debug for SpendDescription<A> {
@@ -213,8 +213,7 @@ impl<A: Authorization> std::fmt::Debug for SpendDescription<A> {
 }
 
 impl<A: Authorization> SpendDescription<A> {
-    #[cfg(feature = "temporary-zcashd")]
-    pub fn temporary_zcashd_from_parts(
+    pub fn from_parts(
         cv: ValueCommitment,
         anchor: bls12_381::Scalar,
         nullifier: Nullifier,
@@ -408,12 +407,12 @@ impl SpendDescriptionV5 {
 
 #[derive(Clone)]
 pub struct OutputDescription<Proof> {
-    cv: ValueCommitment,
-    cmu: ExtractedNoteCommitment,
-    ephemeral_key: EphemeralKeyBytes,
-    enc_ciphertext: [u8; 580],
-    out_ciphertext: [u8; 80],
-    zkproof: Proof,
+    pub cv: ValueCommitment,
+    pub cmu: ExtractedNoteCommitment,
+    pub ephemeral_key: EphemeralKeyBytes,
+    pub enc_ciphertext: [u8; 580],
+    pub out_ciphertext: [u8; 80],
+    pub zkproof: Proof,
 }
 
 impl<Proof> OutputDescription<Proof> {

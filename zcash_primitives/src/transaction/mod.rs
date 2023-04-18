@@ -305,14 +305,14 @@ impl PartialEq for Transaction {
 
 #[derive(Debug)]
 pub struct TransactionData<A: Authorization> {
-    version: TxVersion,
-    consensus_branch_id: BranchId,
-    lock_time: u32,
-    expiry_height: BlockHeight,
-    transparent_bundle: Option<transparent::Bundle<A::TransparentAuth>>,
-    sprout_bundle: Option<sprout::Bundle>,
-    sapling_bundle: Option<sapling::Bundle<A::SaplingAuth>>,
-    orchard_bundle: Option<orchard::bundle::Bundle<A::OrchardAuth, Amount>>,
+    pub version: TxVersion,
+    pub consensus_branch_id: BranchId,
+    pub lock_time: u32,
+    pub expiry_height: BlockHeight,
+    pub transparent_bundle: Option<transparent::Bundle<A::TransparentAuth>>,
+    pub sprout_bundle: Option<sprout::Bundle>,
+    pub sapling_bundle: Option<sapling::Bundle<A::SaplingAuth>>,
+    pub orchard_bundle: Option<orchard::bundle::Bundle<A::OrchardAuth, Amount>>,
     #[cfg(feature = "zfuture")]
     tze_bundle: Option<tze::Bundle<A::TzeAuth>>,
 }

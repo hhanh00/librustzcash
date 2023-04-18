@@ -19,7 +19,7 @@ use crate::{
         spend_sig_internal,
         util::generate_random_rseed_internal,
         value::{NoteValue, ValueSum},
-        Diversifier, Node, Note, PaymentAddress,
+        Diversifier, Node, Note, PaymentAddress, Rseed,
     },
     transaction::{
         builder::Progress,
@@ -63,11 +63,11 @@ impl fmt::Display for Error {
 
 #[derive(Debug, Clone)]
 pub struct SpendDescriptionInfo {
-    extsk: ExtendedSpendingKey,
-    diversifier: Diversifier,
-    note: Note,
-    alpha: jubjub::Fr,
-    merkle_path: MerklePath<Node>,
+    pub extsk: ExtendedSpendingKey,
+    pub diversifier: Diversifier,
+    pub note: Note,
+    pub alpha: jubjub::Fr,
+    pub merkle_path: MerklePath<Node>,
 }
 
 impl fees::InputView<()> for SpendDescriptionInfo {
@@ -115,14 +115,31 @@ impl SaplingOutputInfo {
         }
     }
 
+    pub fn new_with_rseed(
+        ovk: Option<OutgoingViewingKey>,
+        to: PaymentAddress,
+        value: NoteValue,
+        memo: MemoBytes,
+        rseed: Rseed,
+    ) -> Self {
+        let note = Note::from_parts(to, value, rseed);
+
+        SaplingOutputInfo {
+            ovk,
+            to,
+            note,
+            memo,
+        }
+    }
+
     fn build<P: consensus::Parameters, Pr: TxProver, R: RngCore>(
         self,
         prover: &Pr,
         ctx: &mut Pr::SaplingProvingContext,
-        rng: &mut R,
+        mut rng: R,
     ) -> OutputDescription<GrothProofBytes> {
         let encryptor =
-            sapling_note_encryption::<R, P>(self.ovk, self.note.clone(), self.to, self.memo, rng);
+            sapling_note_encryption::<R, P>(self.ovk, self.note.clone(), self.to, self.memo, &mut rng);
 
         let (zkproof, cv) = prover.output_proof(
             ctx,
@@ -130,12 +147,13 @@ impl SaplingOutputInfo {
             self.to,
             self.note.rcm(),
             self.note.value().inner(),
+            &mut rng,
         );
 
         let cmu = self.note.cmu();
 
         let enc_ciphertext = encryptor.encrypt_note_plaintext();
-        let out_ciphertext = encryptor.encrypt_outgoing_plaintext(&cv, &cmu, rng);
+        let out_ciphertext = encryptor.encrypt_outgoing_plaintext(&cv, &cmu, &mut rng);
 
         let epk = encryptor.epk();
 
@@ -206,7 +224,7 @@ pub struct SaplingBuilder<P> {
 
 #[derive(Clone)]
 pub struct Unauthorized {
-    tx_metadata: SaplingMetadata,
+    pub tx_metadata: SaplingMetadata,
 }
 
 impl std::fmt::Debug for Unauthorized {
@@ -343,6 +361,30 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
         Ok(())
     }
 
+    pub fn add_output_with_rseed(
+        &mut self,
+        ovk: Option<OutgoingViewingKey>,
+        to: PaymentAddress,
+        value: NoteValue,
+        memo: MemoBytes,
+        rseed: Rseed,
+    ) -> Result<(), Error> {
+        let output = SaplingOutputInfo::new_with_rseed(
+            ovk,
+            to,
+            value,
+            memo,
+            rseed,
+        );
+
+        self.value_balance = (self.value_balance - value).ok_or(Error::InvalidAddress)?;
+        self.try_value_balance()?;
+
+        self.outputs.push(output);
+
+        Ok(())
+    }
+
     pub fn build<Pr: TxProver, R: RngCore>(
         self,
         prover: &Pr,
@@ -411,6 +453,7 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
                             spend.note.value().inner(),
                             anchor,
                             spend.merkle_path.clone(),
+                            &mut rng,
                         )
                         .map_err(|_| Error::SpendProof)?;
 
@@ -486,6 +529,7 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
                         dummy_note.recipient(),
                         dummy_note.rcm(),
                         dummy_note.value().inner(),
+                        &mut rng,
                     );
 
                     let cmu = dummy_note.cmu();

@@ -62,7 +62,7 @@ pub fn merkle_hash(depth: usize, lhs: &[u8; 32], rhs: &[u8; 32]) -> [u8; 32] {
 /// A node within the Sapling commitment tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Node {
-    pub(super) repr: [u8; 32],
+    pub repr: [u8; 32],
 }
 
 impl Node {
