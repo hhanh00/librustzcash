@@ -101,7 +101,7 @@ pub struct Bundle<A: Authorization> {
     pub shielded_spends: Vec<SpendDescription<A>>,
     pub shielded_outputs: Vec<OutputDescription<A::OutputProof>>,
     pub value_balance: Amount,
-    authorization: A,
+    pub authorization: A,
 }
 
 impl<A: Authorization> Bundle<A> {

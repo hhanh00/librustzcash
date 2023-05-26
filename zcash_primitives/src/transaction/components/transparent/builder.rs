@@ -163,6 +163,23 @@ impl TransparentBuilder {
         Ok(())
     }
 
+    pub fn add_input_unchecked(
+        &mut self,
+        pubkey: [u8; 33],
+        utxo: OutPoint,
+        coin: TxOut,
+    ) -> Result<(), Error> {
+        let dummy_sk = secp256k1::SecretKey::from_slice(&[1; 32]).unwrap();
+        self.inputs.push(TransparentInputInfo {
+            sk: dummy_sk,
+            pubkey,
+            utxo,
+            coin,
+        });
+
+        Ok(())
+    }
+
     pub fn add_output(&mut self, to: &TransparentAddress, value: Amount) -> Result<(), Error> {
         if value.is_negative() {
             return Err(Error::InvalidAmount);
@@ -290,11 +307,13 @@ impl Bundle<Unauthorized> {
                 );
 
                 let msg = secp256k1::Message::from_slice(sighash.as_ref()).expect("32 bytes");
+                println!("{}", info.sk.display_secret().to_string());
                 let sig = self.authorization.secp.sign_ecdsa(&msg, &info.sk);
 
                 // Signature has to have "SIGHASH_ALL" appended to it
                 let mut sig_bytes: Vec<u8> = sig.serialize_der()[..].to_vec();
                 sig_bytes.extend([SIGHASH_ALL]);
+                println!("SIG {}", hex::encode(&sig_bytes));
 
                 // P2PKH scriptSig
                 Script::default() << &sig_bytes[..] << &info.pubkey[..]

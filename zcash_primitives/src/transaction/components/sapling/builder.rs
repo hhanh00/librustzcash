@@ -33,6 +33,7 @@ use crate::{
     },
     zip32::ExtendedSpendingKey,
 };
+use crate::sapling::ProofGenerationKey;
 
 /// If there are any shielded inputs, always have at least two shielded outputs, padding
 /// with dummy outputs if necessary. See <https://github.com/zcash/zcash/issues/3615>.
@@ -64,6 +65,7 @@ impl fmt::Display for Error {
 #[derive(Debug, Clone)]
 pub struct SpendDescriptionInfo {
     pub extsk: ExtendedSpendingKey,
+    pub pgk: ProofGenerationKey,
     pub diversifier: Diversifier,
     pub note: Note,
     pub alpha: jubjub::Fr,
@@ -300,8 +302,25 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
     /// paths for previous Sapling notes.
     pub fn add_spend<R: RngCore>(
         &mut self,
+        rng: R,
+        extsk: ExtendedSpendingKey,
+        diversifier: Diversifier,
+        note: Note,
+        merkle_path: MerklePath<Node>,
+    ) -> Result<(), Error> {
+        let pgk = extsk.expsk.proof_generation_key();
+        self.add_spend_with_pgk(rng, extsk, pgk, diversifier, note, merkle_path)
+    }
+
+    /// Adds a Sapling note to be spent in this transaction.
+    ///
+    /// Returns an error if the given Merkle path does not have the same anchor as the
+    /// paths for previous Sapling notes.
+    pub fn add_spend_with_pgk<R: RngCore>(
+        &mut self,
         mut rng: R,
         extsk: ExtendedSpendingKey,
+        pgk: ProofGenerationKey,
         diversifier: Diversifier,
         note: Note,
         merkle_path: MerklePath<Node>,
@@ -324,6 +343,7 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
 
         self.spends.push(SpendDescriptionInfo {
             extsk,
+            pgk,
             diversifier,
             note,
             alpha,
@@ -436,7 +456,7 @@ impl<P: consensus::Parameters> SaplingBuilder<P> {
                 .into_iter()
                 .enumerate()
                 .map(|(i, (pos, spend))| {
-                    let proof_generation_key = spend.extsk.expsk.proof_generation_key();
+                    let proof_generation_key = spend.pgk.clone();
 
                     let nullifier = spend.note.nf(
                         &proof_generation_key.to_viewing_key().nk,
