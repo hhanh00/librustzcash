@@ -342,6 +342,10 @@ impl Script {
             None
         }
     }
+
+    pub fn op_return(data: &[u8]) -> Script {
+        Script::default() << OpCode::Return << data
+    }
 }
 
 impl Shl<OpCode> for Script {

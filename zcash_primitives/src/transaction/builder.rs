@@ -505,6 +505,14 @@ impl<'a, P: consensus::Parameters, U: sapling::builder::ProverProgress> Builder<
         self.transparent_builder.add_output(to, value)
     }
 
+    /// Adds a transparent memo, in the form of an OP_RETURN
+    pub fn add_transparent_memo(
+        &mut self,
+        memo: &[u8]
+    ) -> Result<(), transparent::builder::Error> {
+        self.transparent_builder.add_memo(memo)
+    }
+
     /// Returns the sum of the transparent, Sapling, Orchard, and TZE value balances.
     fn value_balance(&self) -> Result<Amount, BalanceError> {
         let value_balances = [

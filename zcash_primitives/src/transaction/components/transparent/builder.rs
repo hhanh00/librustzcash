@@ -29,6 +29,7 @@ use {
 pub enum Error {
     InvalidAddress,
     InvalidAmount,
+    MemoTooLong,
 }
 
 impl fmt::Display for Error {
@@ -36,6 +37,7 @@ impl fmt::Display for Error {
         match self {
             Error::InvalidAddress => write!(f, "Invalid address"),
             Error::InvalidAmount => write!(f, "Invalid amount"),
+            Error::MemoTooLong => write!(f, "Memo exceeds 80 bytes"),
         }
     }
 }
@@ -146,6 +148,19 @@ impl TransparentBuilder {
         self.vout.push(TxOut {
             value,
             script_pubkey: to.script(),
+        });
+
+        Ok(())
+    }
+
+    pub fn add_memo(
+        &mut self,
+        memo: &[u8],
+    ) -> Result<(), Error> {
+        if memo.len() > 80 { return Err(Error::MemoTooLong) }
+        self.vout.push(TxOut {
+            value: NonNegativeAmount::ZERO,
+            script_pubkey: Script::op_return(memo),
         });
 
         Ok(())
