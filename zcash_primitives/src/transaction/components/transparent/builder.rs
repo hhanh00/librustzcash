@@ -29,13 +29,17 @@ use {
 pub enum Error {
     InvalidAddress,
     InvalidAmount,
+    InvalidOpReturn,
 }
+
+impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::InvalidAddress => write!(f, "Invalid address"),
             Error::InvalidAmount => write!(f, "Invalid amount"),
+            Error::InvalidOpReturn => write!(f, "Invalid memo"),
         }
     }
 }
@@ -43,7 +47,7 @@ impl fmt::Display for Error {
 #[cfg(feature = "transparent-inputs")]
 #[derive(Debug, Clone)]
 pub struct TransparentInputInfo {
-    sk: secp256k1::SecretKey,
+    sk: Option<secp256k1::SecretKey>,
     pubkey: [u8; secp256k1::constants::PUBLIC_KEY_SIZE],
     utxo: OutPoint,
     coin: TxOut,
@@ -110,12 +114,49 @@ impl TransparentBuilder {
         &mut self,
         sk: secp256k1::SecretKey,
         utxo: OutPoint,
+        coin: TxOut
+    ) -> Result<(), Error> {
+        let pk = secp256k1::PublicKey::from_secret_key(&self.secp, &sk);
+        let pubkey = pk.serialize();
+        self.check_input(&pubkey, &coin)?;
+        self.inputs.push(TransparentInputInfo {
+            sk: Some(sk),
+            pubkey,
+            utxo,
+            coin,
+        });
+        Ok(())
+    }
+
+    /// Adds a coin (the output of a previous transaction) to be spent to the transaction.
+    #[cfg(feature = "transparent-inputs")]
+    pub fn add_input_without_sk(
+        &mut self,
+        pk: secp256k1::PublicKey,
+        utxo: OutPoint,
         coin: TxOut,
+    ) -> Result<(), Error> {
+        let pubkey = pk.serialize();
+        self.check_input(&pubkey, &coin)?;
+        self.inputs.push(TransparentInputInfo {
+            sk: None,
+            utxo,
+            pubkey,
+            coin,
+        });
+        Ok(())
+    }
+
+    /// Adds a coin (the output of a previous transaction) to be spent to the transaction.
+    #[cfg(feature = "transparent-inputs")]
+    pub fn check_input(
+        &self,
+        pubkey: &[u8; 33],
+        coin: &TxOut,
     ) -> Result<(), Error> {
         // Ensure that the RIPEMD-160 digest of the public key associated with the
         // provided secret key matches that of the address to which the provided
         // output may be spent.
-        let pubkey = secp256k1::PublicKey::from_secret_key(&self.secp, &sk).serialize();
         match coin.script_pubkey.address() {
             Some(TransparentAddress::PublicKeyHash(hash)) => {
                 use ripemd::Ripemd160;
@@ -128,13 +169,6 @@ impl TransparentBuilder {
             _ => return Err(Error::InvalidAddress),
         }
 
-        self.inputs.push(TransparentInputInfo {
-            sk,
-            pubkey,
-            utxo,
-            coin,
-        });
-
         Ok(())
     }
 
@@ -146,6 +180,19 @@ impl TransparentBuilder {
         self.vout.push(TxOut {
             value,
             script_pubkey: to.script(),
+        });
+
+        Ok(())
+    }
+
+    pub fn add_output_memo(
+        &mut self,
+        memo: &[u8]
+    ) -> Result<(), Error> {
+        let script = Script::op_return(memo).ok_or_else(|| Error::InvalidOpReturn)?;
+        self.vout.push(TxOut {
+            value: NonNegativeAmount::ZERO,
+            script_pubkey: script,
         });
 
         Ok(())
@@ -239,13 +286,13 @@ impl TransparentAuthorizingContext for Unauthorized {
 }
 
 impl Bundle<Unauthorized> {
-    pub fn apply_signatures(
-        self,
+    pub fn get_sighashes(
+        &self,
         #[cfg(feature = "transparent-inputs")] mtx: &TransactionData<tx::Unauthorized>,
         #[cfg(feature = "transparent-inputs")] txid_parts_cache: &TxDigests<Blake2bHash>,
-    ) -> Bundle<Authorized> {
+    ) -> Vec<Vec<u8>> {
         #[cfg(feature = "transparent-inputs")]
-        let script_sigs = self
+        let sighashes = self
             .authorization
             .inputs
             .iter()
@@ -262,9 +309,71 @@ impl Bundle<Unauthorized> {
                     },
                     txid_parts_cache,
                 );
+                sighash.as_ref().to_vec()
+            })
+            .collect::<Vec<_>>();
 
+        #[cfg(not(feature = "transparent-inputs"))]
+        let script_sigs: Vec<Vec<u8>> = vec![];
+
+        sighashes
+    }
+
+    pub fn apply_external_signatures(
+        self,
+        #[cfg(feature = "transparent-inputs")] signatures: Vec<secp256k1::ecdsa::Signature>,
+    ) -> Bundle<Authorized> {
+        #[cfg(feature = "transparent-inputs")]
+        let script_sigs = {
+            self
+            .authorization
+            .inputs
+            .iter()
+            .zip(signatures)
+            .map(|(info, signature)| {
+                let mut sig_bytes: Vec<u8> = signature.serialize_der()[..].to_vec();
+                sig_bytes.extend([SIGHASH_ALL]);
+
+                // P2PKH scriptSig
+                Script::default() << &sig_bytes[..] << &info.pubkey[..]
+            })
+        };
+
+        #[cfg(not(feature = "transparent-inputs"))]
+        let script_sigs = std::iter::empty::<Script>();
+
+        transparent::Bundle {
+            vin: self
+                .vin
+                .iter()
+                .zip(script_sigs)
+                .map(|(txin, sig)| TxIn {
+                    prevout: txin.prevout.clone(),
+                    script_sig: sig,
+                    sequence: txin.sequence,
+                })
+                .collect(),
+            vout: self.vout,
+            authorization: Authorized,
+        }
+    }
+
+    pub fn apply_signatures(
+        self,
+        #[cfg(feature = "transparent-inputs")] mtx: &TransactionData<tx::Unauthorized>,
+        #[cfg(feature = "transparent-inputs")] txid_parts_cache: &TxDigests<Blake2bHash>,
+    ) -> Bundle<Authorized> {
+        #[cfg(feature = "transparent-inputs")]
+        let script_sigs = {
+            let sighashes = self.get_sighashes(mtx, txid_parts_cache);
+            self
+            .authorization
+            .inputs
+            .iter()
+            .zip(sighashes)
+            .map(|(info, sighash)| {
                 let msg = secp256k1::Message::from_slice(sighash.as_ref()).expect("32 bytes");
-                let sig = self.authorization.secp.sign_ecdsa(&msg, &info.sk);
+                let sig = self.authorization.secp.sign_ecdsa(&msg, &info.sk.expect("Must have secret key"));
 
                 // Signature has to have "SIGHASH_ALL" appended to it
                 let mut sig_bytes: Vec<u8> = sig.serialize_der()[..].to_vec();
@@ -272,7 +381,8 @@ impl Bundle<Unauthorized> {
 
                 // P2PKH scriptSig
                 Script::default() << &sig_bytes[..] << &info.pubkey[..]
-            });
+            })
+        };
 
         #[cfg(not(feature = "transparent-inputs"))]
         let script_sigs = std::iter::empty::<Script>();

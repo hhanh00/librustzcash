@@ -500,6 +500,17 @@ impl<'a, P: consensus::Parameters, U: sapling::builder::ProverProgress> Builder<
         self.transparent_builder.add_input(sk, utxo, coin)
     }
 
+    /// Adds a transparent coin to be spent in this transaction.
+    #[cfg(feature = "transparent-inputs")]
+    pub fn add_transparent_input_without_sk(
+        &mut self,
+        pk: secp256k1::PublicKey,
+        utxo: transparent::OutPoint,
+        coin: TxOut,
+    ) -> Result<(), transparent::builder::Error> {
+        self.transparent_builder.add_input_without_sk(pk, utxo, coin)
+    }
+
     /// Adds a transparent address to send funds to.
     pub fn add_transparent_output(
         &mut self,
@@ -507,6 +518,14 @@ impl<'a, P: consensus::Parameters, U: sapling::builder::ProverProgress> Builder<
         value: NonNegativeAmount,
     ) -> Result<(), transparent::builder::Error> {
         self.transparent_builder.add_output(to, value)
+    }
+
+    /// Adds a transparent memo without funds.
+    pub fn add_transparent_output_memo(
+        &mut self,
+        memo: &[u8],
+    ) -> Result<(), transparent::builder::Error> {
+        self.transparent_builder.add_output_memo(memo)
     }
 
     /// Returns the sum of the transparent, Sapling, Orchard, and TZE value balances.

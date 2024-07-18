@@ -348,6 +348,12 @@ impl Script {
             None
         }
     }
+
+    pub(crate) fn op_return(memo: &[u8]) -> Option<Script> {
+        if memo.len() > 80 { return None }
+        let script = Script::default() << OpCode::Return << memo;
+        Some(script)
+    }
 }
 
 impl Shl<OpCode> for Script {

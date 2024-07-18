@@ -560,7 +560,7 @@ impl TransactionData<Authorized> {
 }
 
 impl Transaction {
-    fn from_data(data: TransactionData<Authorized>) -> io::Result<Self> {
+    pub fn from_data(data: TransactionData<Authorized>) -> io::Result<Self> {
         match data.version {
             TxVersion::Sprout(_) | TxVersion::Overwinter | TxVersion::Sapling => {
                 Self::from_data_v4(data)
