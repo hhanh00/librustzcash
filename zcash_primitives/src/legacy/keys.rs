@@ -211,6 +211,10 @@ impl AccountPrivKey {
             .and_then(|k| ExtendedPrivateKey::try_from(k).ok())
             .map(AccountPrivKey::from_extended_privkey)
     }
+
+    pub fn into_inner(self) -> ExtendedPrivateKey<secp256k1::SecretKey> {
+        self.0
+    }
 }
 
 /// A [BIP44] public key at the account path level `m/44'/<coin_type>'/<account>'`.
@@ -290,6 +294,10 @@ impl AccountPubKey {
                 chain_code,
             },
         )))
+    }
+
+    pub fn into_inner(self) -> ExtendedPublicKey<PublicKey> {
+        self.0
     }
 }
 
