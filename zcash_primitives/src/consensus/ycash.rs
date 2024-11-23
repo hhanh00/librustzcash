@@ -38,6 +38,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Heartwood => Some(BlockHeight(1_100_003)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_100_006)),
             NetworkUpgrade::Nu5 => None,
+            NetworkUpgrade::Nu6 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -101,6 +102,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Heartwood => Some(BlockHeight(661_622)),
             NetworkUpgrade::Canopy => Some(BlockHeight(661_634)),
             NetworkUpgrade::Nu5 => None,
+            NetworkUpgrade::Nu6 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }

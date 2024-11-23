@@ -112,7 +112,7 @@ pub mod mock {
             value: u64,
             _anchor: bls12_381::Scalar,
             _merkle_path: MerklePath<Node>,
-            rng: R,
+            mut rng: R,
         ) -> Result<([u8; GROTH_PROOF_SIZE], ValueCommitment, PublicKey), ()> {
             let value = NoteValue::from_raw(value);
             let rcv = ValueCommitTrapdoor::random(&mut rng);

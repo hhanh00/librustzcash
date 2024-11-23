@@ -220,6 +220,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Heartwood => BranchId::Heartwood,
             NetworkUpgrade::Canopy => BranchId::Canopy,
             NetworkUpgrade::Nu5 => BranchId::Nu5,
+            NetworkUpgrade::Nu6 => BranchId::Nu6,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -235,6 +236,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_000)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_046_400)),
             NetworkUpgrade::Nu5 => Some(BlockHeight(1_687_104)),
+            NetworkUpgrade::Nu6 => Some(BlockHeight(2_726_400)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -288,6 +290,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Heartwood => BranchId::Heartwood,
             NetworkUpgrade::Canopy => BranchId::Canopy,
             NetworkUpgrade::Nu5 => BranchId::Nu5,
+            NetworkUpgrade::Nu6 => BranchId::Nu6,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -303,6 +306,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Heartwood => Some(BlockHeight(903_800)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1_028_500)),
             NetworkUpgrade::Nu5 => Some(BlockHeight(1_842_420)),
+            NetworkUpgrade::Nu6 => Some(BlockHeight(2_976_000)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -354,6 +358,7 @@ impl Parameters for RegtestNetwork {
             NetworkUpgrade::Heartwood => BranchId::Heartwood,
             NetworkUpgrade::Canopy => BranchId::Canopy,
             NetworkUpgrade::Nu5 => BranchId::Nu5,
+            NetworkUpgrade::Nu6 => BranchId::Nu6,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -369,6 +374,7 @@ impl Parameters for RegtestNetwork {
             NetworkUpgrade::Heartwood => Some(BlockHeight(1)),
             NetworkUpgrade::Canopy => Some(BlockHeight(1)),
             NetworkUpgrade::Nu5 => Some(BlockHeight(1)),
+            NetworkUpgrade::Nu6 => Some(BlockHeight(1)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -563,6 +569,10 @@ pub enum NetworkUpgrade {
     ///
     /// [Nu5]: https://z.cash/upgrade/nu5/
     Nu5,
+    /// The [Nu6] network upgrade.
+    ///
+    /// [Nu6]: https://z.cash/upgrade/nu6/
+    Nu6,
 
     /// The ZFUTURE network upgrade.
     ///
@@ -585,6 +595,7 @@ impl fmt::Display for NetworkUpgrade {
             NetworkUpgrade::Heartwood => write!(f, "Heartwood"),
             NetworkUpgrade::Canopy => write!(f, "Canopy"),
             NetworkUpgrade::Nu5 => write!(f, "Nu5"),
+            NetworkUpgrade::Nu6 => write!(f, "Nu6"),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => write!(f, "ZFUTURE"),
         }
@@ -598,6 +609,7 @@ const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
     NetworkUpgrade::Heartwood,
     NetworkUpgrade::Canopy,
     NetworkUpgrade::Nu5,
+    NetworkUpgrade::Nu6,
 ];
 
 impl NetworkUpgrade {
@@ -657,6 +669,8 @@ pub enum BranchId {
     YCanopy,
     /// The consensus rules deployed by [`NetworkUpgrade::Nu5`].
     Nu5,
+    /// The consensus rules deployed by [`NetworkUpgrade::Nu6`].
+    Nu6,
     /// Candidates for future consensus rules; this branch will never
     /// activate on mainnet.
     #[cfg(feature = "zfuture")]
@@ -681,6 +695,7 @@ impl TryFrom<u32> for BranchId {
             0x6631_4da3 => Ok(BranchId::YHeartwood),
             0x19bd_2d2f => Ok(BranchId::YCanopy),
             0xc2d6_d0b4 => Ok(BranchId::Nu5),
+            0xc8e7_1055 => Ok(BranchId::Nu6),
             #[cfg(feature = "zfuture")]
             0xffff_ffff => Ok(BranchId::ZFuture),
             _ => Err("Unknown consensus branch ID"),
@@ -702,6 +717,7 @@ impl From<BranchId> for u32 {
             BranchId::YHeartwood => 0x6631_4da3,
             BranchId::YCanopy => 0x19bd_2d2f,
             BranchId::Nu5 => 0xc2d6_d0b4,
+            BranchId::Nu6 => 0xc8e7_1055,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => 0xffff_ffff,
         }
