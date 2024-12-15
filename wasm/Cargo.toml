@@ -1,0 +1,75 @@
+[package]
+name = "wasm"
+description = "Zcash key and address management"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+
+[dependencies]
+zcash_address.workspace = true
+
+zcash_protocol.workspace = true
+zcash_client_backend = { workspace = true, features = [ "transparent-inputs", "orchard" ] }
+# zcash_primitives = { git = "https://github.com/hhanh00/librustzcash.git", rev = "029c3ddd", features = [ "transparent-inputs" ] }
+# zcash_proofs = { git = "https://github.com/hhanh00/librustzcash.git", rev = "029c3ddd", default-features = false, features = ["local-prover"] }
+# zcash_address = { git = "https://github.com/hhanh00/librustzcash.git", rev = "029c3ddd" }
+# zcash_encoding = { git = "https://github.com/hhanh00/librustzcash.git",  rev = "029c3ddd" }
+# zcash_note_encryption = "0.4"
+
+# zcash_encoding.workspace = true
+# zcash_primitives.workspace = true
+# zcash_protocol.workspace = true
+zip32.workspace = true
+getrandom = { version = "0.2.15", features = ["js"] }
+
+# # Dependencies exposed in a public API:
+# nonempty.workspace = true
+
+# # - CSPRNG
+# rand_core.workspace = true
+
+# # - Encodings
+# bech32.workspace = true
+# bs58.workspace = true
+
+# # - Transparent protocols
+# bip32 = { workspace = true, optional = true }
+
+# # - Logging and metrics
+# memuse.workspace = true
+# tracing.workspace = true
+
+# # - Secret management
+# secrecy.workspace = true
+# subtle.workspace = true
+
+# # - Shielded protocols
+# bls12_381.workspace = true
+# group.workspace = true
+# orchard = { workspace = true, optional = true }
+# sapling = { workspace = true, optional = true }
+
+# # - Test dependencies
+# proptest = { workspace = true, optional = true }
+
+# # Dependencies used internally:
+# # (Breaking upgrades to these are usually backwards-compatible, but check MSRVs.)
+# # - Documentation
+# document-features.workspace = true
+
+# # - Encodings
+# byteorder = { workspace = true, optional = true }
+
+# # - Digests
+# blake2b_simd = { workspace = true }
+
+# [dev-dependencies]
+# hex.workspace = true
+# jubjub.workspace = true
+# proptest.workspace = true
+# rand_core.workspace = true
+# zcash_address = { workspace = true, features = ["test-dependencies"] }
+# zcash_primitives = { workspace = true, features = ["test-dependencies"] }
+

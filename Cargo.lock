@@ -5638,6 +5638,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm"
+version = "0.1.0"
+dependencies = [
+ "getrandom",
+ "zcash_address",
+ "zcash_client_backend",
+ "zcash_protocol",
+ "zip32",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
