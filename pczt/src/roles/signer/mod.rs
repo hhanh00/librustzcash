@@ -232,6 +232,11 @@ impl Signer {
             orchard: crate::orchard::Bundle::serialize_from(self.orchard),
         }
     }
+
+    /// Returns the shielded sighash
+    pub fn shielded_sighash(&self) -> [u8; 32] {
+        self.shielded_sighash.clone()
+    }
 }
 
 /// Extracts an unauthorized `TransactionData` from the PCZT.
