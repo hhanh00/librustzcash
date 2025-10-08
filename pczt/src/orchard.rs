@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// PCZT fields that are specific to producing the transaction's Orchard bundle (if any).
-#[derive(Clone, Debug, Serialize, Deserialize, Getters)]
+#[derive(Clone, Debug, Serialize, Deserialize, Getters, Default)]
 pub struct Bundle {
     /// The Orchard actions in this bundle.
     ///

@@ -138,6 +138,43 @@ pub struct Input {
     pub(crate) proprietary: BTreeMap<String, Vec<u8>>,
 }
 
+impl Input {
+    /// Create an input from its parts.
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_parts(
+        prevout_txid: [u8; 32],
+        prevout_index: u32,
+        sequence: Option<u32>,
+        required_time_lock_time: Option<u32>,
+        required_height_lock_time: Option<u32>,
+        script_sig: Option<Vec<u8>>,
+        value: u64,
+        script_pubkey: Vec<u8>,
+        redeem_script: Option<Vec<u8>>,
+        sighash_type: u8,
+    ) -> Self {
+        Self {
+            prevout_txid,
+            prevout_index,
+            sequence,
+            required_time_lock_time,
+            required_height_lock_time,
+            script_sig,
+            value,
+            script_pubkey,
+            redeem_script,
+            sighash_type,
+            partial_signatures: BTreeMap::new(),
+            bip32_derivation: BTreeMap::new(),
+            ripemd160_preimages: BTreeMap::new(),
+            sha256_preimages: BTreeMap::new(),
+            hash160_preimages: BTreeMap::new(),
+            hash256_preimages: BTreeMap::new(),
+            proprietary: BTreeMap::new(),
+        }
+    }
+}
+
 /// Information about a transparent output within a transaction.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Getters)]
@@ -182,7 +219,26 @@ pub struct Output {
     pub(crate) proprietary: BTreeMap<String, Vec<u8>>,
 }
 
+impl Output {
+    /// Create an Output from its parts
+    pub fn from_parts(value: u64, script_pubkey: Vec<u8>, redeem_script: Option<Vec<u8>>) -> Self {
+        Self {
+            value,
+            script_pubkey,
+            redeem_script,
+            bip32_derivation: BTreeMap::new(),
+            user_address: None,
+            proprietary: BTreeMap::new(),
+        }
+    }
+}
+
 impl Bundle {
+    /// Create Bundle from parts.
+    pub fn from_parts(inputs: Vec<Input>, outputs: Vec<Output>) -> Self {
+        Self { inputs, outputs }
+    }
+
     /// Merges this bundle with another.
     ///
     /// Returns `None` if the bundles have conflicting data.

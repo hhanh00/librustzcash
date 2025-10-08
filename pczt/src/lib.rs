@@ -82,6 +82,21 @@ pub struct Pczt {
 }
 
 impl Pczt {
+    /// Create a PCZT from parts.
+    pub fn from_parts(
+        global: common::Global,
+        transparent: transparent::Bundle,
+        sapling: sapling::Bundle,
+        orchard: orchard::Bundle,
+    ) -> Self {
+        Self {
+            global,
+            transparent,
+            sapling,
+            orchard,
+        }
+    }
+
     /// Parses a PCZT from its encoding.
     pub fn parse(bytes: &[u8]) -> Result<Self, ParseError> {
         if bytes.len() < 8 {

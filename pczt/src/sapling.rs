@@ -17,7 +17,7 @@ use crate::{
 const GROTH_PROOF_SIZE: usize = 48 + 96 + 48;
 
 /// PCZT fields that are specific to producing the transaction's Sapling bundle (if any).
-#[derive(Clone, Debug, Serialize, Deserialize, Getters)]
+#[derive(Clone, Debug, Serialize, Deserialize, Getters, Default)]
 pub struct Bundle {
     #[getset(get = "pub")]
     pub(crate) spends: Vec<Spend>,
@@ -158,6 +158,44 @@ pub struct Spend {
     pub(crate) proprietary: BTreeMap<String, Vec<u8>>,
 }
 
+impl Spend {
+    #[allow(clippy::too_many_arguments)]
+    /// Creates a Spend from its component parts.
+    ///
+    /// Used by a low-level creator
+    pub fn from_parts(
+        recipient: Option<[u8; 43]>,
+        value: Option<u64>,
+        cv: [u8; 32],
+        nullifier: [u8; 32],
+        rk: [u8; 32],
+        rseed: Option<[u8; 32]>,
+        rcv: Option<[u8; 32]>,
+        rcm: Option<[u8; 32]>,
+        alpha: Option<[u8; 32]>,
+        dummy_ask: Option<[u8; 32]>,
+    ) -> Self {
+        Self {
+            recipient,
+            value,
+            cv,
+            nullifier,
+            rk,
+            rseed,
+            rcv,
+            rcm,
+            alpha,
+            dummy_ask,
+            zkproof: None,
+            spend_auth_sig: None,
+            proof_generation_key: None,
+            witness: None,
+            zip32_derivation: None,
+            proprietary: BTreeMap::new(),
+        }
+    }
+}
+
 /// Information about a Sapling output within a transaction.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Getters)]
@@ -258,7 +296,61 @@ pub struct Output {
     pub(crate) proprietary: BTreeMap<String, Vec<u8>>,
 }
 
+impl Output {
+    /// Creates an Output from its component parts.
+    ///
+    /// Used by a low-level creator
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_parts(
+        cv: [u8; 32],
+        cmu: [u8; 32],
+        recipient: Option<[u8; 43]>,
+        value: Option<u64>,
+        ephemeral_key: [u8; 32],
+        enc_ciphertext: Vec<u8>,
+        out_ciphertext: Vec<u8>,
+        rseed: Option<[u8; 32]>,
+        rcv: Option<[u8; 32]>,
+        ock: Option<[u8; 32]>,
+    ) -> Self {
+        Self {
+            cv,
+            cmu,
+            recipient,
+            value,
+            ephemeral_key,
+            enc_ciphertext,
+            out_ciphertext,
+            rseed,
+            rcv,
+            ock,
+            zkproof: None,
+            zip32_derivation: None,
+            user_address: None,
+            proprietary: BTreeMap::new(),
+        }
+    }
+}
+
 impl Bundle {
+    /// Create a Bundle from its parts.
+    ///
+    pub fn from_parts(
+        spends: Vec<Spend>,
+        outputs: Vec<Output>,
+        value_sum: i128,
+        anchor: [u8; 32],
+        bsk: Option<[u8; 32]>,
+    ) -> Self {
+        Self {
+            spends,
+            outputs,
+            value_sum,
+            anchor,
+            bsk,
+        }
+    }
+
     /// Merges this bundle with another.
     ///
     /// Returns `None` if the bundles have conflicting data.
