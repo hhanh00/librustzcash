@@ -66,6 +66,7 @@ pub struct Spend {
     ///
     /// This is set by the Prover.
     #[serde_as(as = "Option<[_; GROTH_PROOF_SIZE]>")]
+    #[getset(get = "pub")]
     pub(crate) zkproof: Option<[u8; GROTH_PROOF_SIZE]>,
 
     /// The spend authorization signature.
@@ -233,6 +234,7 @@ pub struct Output {
     ///
     /// This is set by the Prover.
     #[serde_as(as = "Option<[_; GROTH_PROOF_SIZE]>")]
+    #[getset(get = "pub")]
     pub(crate) zkproof: Option<[u8; GROTH_PROOF_SIZE]>,
 
     /// The [raw encoding] of the Sapling payment address that will receive the output.
