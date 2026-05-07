@@ -83,7 +83,7 @@ impl InputUpdater<'_> {
     }
 
     /// Sets the BIP 32 derivation path for the given pubkey.
-    pub fn set_bip32_derivation(&mut self, pubkey: [u8; 33], derivation: Bip32Derivation) {
+    pub fn set_bip32_derivation(&mut self, pubkey: Vec<u8>, derivation: Bip32Derivation) {
         self.0.bip32_derivation.insert(pubkey, derivation);
     }
 
@@ -141,7 +141,7 @@ impl OutputUpdater<'_> {
     }
 
     /// Sets the BIP 32 derivation path for the given pubkey.
-    pub fn set_bip32_derivation(&mut self, pubkey: [u8; 33], derivation: Bip32Derivation) {
+    pub fn set_bip32_derivation(&mut self, pubkey: Vec<u8>, derivation: Bip32Derivation) {
         self.0.bip32_derivation.insert(pubkey, derivation);
     }
 

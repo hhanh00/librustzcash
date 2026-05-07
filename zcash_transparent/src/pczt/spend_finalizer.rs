@@ -69,14 +69,11 @@ impl super::Bundle {
                                         break;
                                     }
 
-                                    // PCZT requires compressed pubkeys.
-                                    let pubkey =
-                                        <[u8; 33]>::try_from(pubkey.as_slice()).map_err(|_| {
-                                            SpendFinalizerError::UncompressedPubkeyInScript
-                                        })?;
+                                    // Use the pubkey bytes as-is (compressed or uncompressed).
+                                    let pubkey_bytes = pubkey.as_slice();
 
                                     // If we have a signature from this pubkey, use it.
-                                    if let Some(sig) = input.partial_signatures.get(&pubkey) {
+                                    if let Some(sig) = input.partial_signatures.get(pubkey_bytes) {
                                         // Valid signatures always fit into `PushData`s.
                                         script_sig.push(
                                             pv::push_value(sig)

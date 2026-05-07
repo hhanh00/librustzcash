@@ -2,10 +2,7 @@ use alloc::vec::Vec;
 
 use zcash_script::solver;
 
-use crate::{
-    address::{Script, TransparentAddress},
-    sighash::SignableInput,
-};
+use crate::{address::Script, sighash::SignableInput};
 
 impl super::Input {
     /// Helper to prepare a [`SignableInput`] for this input.
@@ -49,38 +46,75 @@ impl super::Input {
     where
         F: FnOnce(SignableInput) -> [u8; 32],
     {
-        let pubkey = sk.public_key(secp).serialize();
-        let p2pkh_addr = TransparentAddress::from_pubkey_bytes(&pubkey);
+        let pubkey = secp256k1::PublicKey::from_secret_key(secp, sk);
 
         // For P2PKH, `script_code` is always the same as `script_pubkey`.
         let script_code = self.redeem_script.as_ref().unwrap_or(&self.script_pubkey);
 
         // Check that the corresponding pubkey appears in either `script_pubkey` or
-        // `redeem_script`.
-        match script_code
+        // `redeem_script`, and determine the correct format (compressed or uncompressed).
+        let pubkey_bytes = match script_code
             .refine()
             .ok()
             .as_ref()
             .and_then(solver::standard)
         {
-            Some(solver::ScriptKind::PubKeyHash { hash })
-                if TransparentAddress::PublicKeyHash(hash) == p2pkh_addr =>
-            {
-                Ok(())
+            Some(solver::ScriptKind::PubKeyHash { hash }) => {
+                // Determine pubkey format: prefer preimage, otherwise try both
+                let pubkey_bytes = if let Some(preimage) = self.hash160_preimages.get(&hash) {
+                    match preimage.len() {
+                        33 => pubkey.serialize().to_vec(),
+                        65 => pubkey.serialize_uncompressed().to_vec(),
+                        _ => return Err(SignerError::UnsupportedPubkey),
+                    }
+                } else {
+                    // Try both formats, see which matches the address hash
+                    let compressed = pubkey.serialize();
+                    let uncompressed = pubkey.serialize_uncompressed();
+                    if crate::util::hash160::hash(&compressed) == hash {
+                        compressed.to_vec()
+                    } else if crate::util::hash160::hash(&uncompressed) == hash {
+                        uncompressed.to_vec()
+                    } else {
+                        return Err(SignerError::WrongSpendingKey);
+                    }
+                };
+
+                pubkey_bytes
             }
-            Some(solver::ScriptKind::MultiSig { pubkeys, .. })
-                if pubkeys
-                    .iter()
-                    .any(|data| data.as_slice() == pubkey.as_slice()) =>
-            {
-                Ok(())
+            Some(solver::ScriptKind::MultiSig { pubkeys, .. }) => {
+                // Check if our pubkey (in either format) appears in the multisig
+                let compressed = pubkey.serialize();
+                let uncompressed = pubkey.serialize_uncompressed();
+
+                let found = pubkeys.iter().find(|data| {
+                    data.as_slice() == compressed.as_slice()
+                        || data.as_slice() == uncompressed.as_slice()
+                });
+
+                match found {
+                    Some(data) if data.as_slice() == compressed.as_slice() => compressed.to_vec(),
+                    Some(data) if data.as_slice() == uncompressed.as_slice() => {
+                        uncompressed.to_vec()
+                    }
+                    _ => return Err(SignerError::WrongSpendingKey),
+                }
             }
-            Some(solver::ScriptKind::PubKey { data }) if data.as_slice() == pubkey.as_slice() => {
-                Ok(())
+            Some(solver::ScriptKind::PubKey { data }) => {
+                let compressed = pubkey.serialize();
+                let uncompressed = pubkey.serialize_uncompressed();
+
+                if data.as_slice() == compressed.as_slice() {
+                    compressed.to_vec()
+                } else if data.as_slice() == uncompressed.as_slice() {
+                    uncompressed.to_vec()
+                } else {
+                    return Err(SignerError::WrongSpendingKey);
+                }
             }
             // This spending key isn't involved with the input in any way we can detect.
-            _ => Err(SignerError::WrongSpendingKey),
-        }?;
+            _ => return Err(SignerError::WrongSpendingKey),
+        };
 
         let sighash = calculate_sighash(SignableInput {
             hash_type: self.sighash_type,
@@ -97,7 +131,7 @@ impl super::Input {
         let mut sig_bytes: Vec<u8> = sig.serialize_der()[..].to_vec();
         sig_bytes.extend([self.sighash_type.encode()]);
 
-        self.partial_signatures.insert(pubkey, sig_bytes);
+        self.partial_signatures.insert(pubkey_bytes, sig_bytes);
 
         Ok(())
     }
@@ -135,8 +169,11 @@ impl super::Input {
             .as_ref()
             .and_then(solver::standard);
 
-        fn to_pubkey(data: &[u8]) -> Result<[u8; 33], SignerError> {
-            data.try_into().map_err(|_| SignerError::UnsupportedPubkey)
+        fn to_pubkey(data: &[u8]) -> Result<Vec<u8>, SignerError> {
+            match data.len() {
+                33 | 65 => Ok(data.to_vec()),
+                _ => Err(SignerError::UnsupportedPubkey),
+            }
         }
 
         // Extract all candidate pubkeys.

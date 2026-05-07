@@ -158,12 +158,18 @@ impl TransparentSigningSet {
 fn construct_script_sig(
     signature: &secp256k1::ecdsa::Signature,
     pubkey: &secp256k1::PublicKey,
+    uncompressed: bool,
 ) -> script::Sig {
     let mut sig_bytes: Vec<u8> = signature.serialize_der().to_vec();
     sig_bytes.push(SIGHASH_ALL);
+    let pubkey_bytes = if uncompressed {
+        pubkey.serialize_uncompressed().to_vec()
+    } else {
+        pubkey.serialize().to_vec()
+    };
     script::Component(vec![
         pv::push_value(&sig_bytes).expect("short enough"),
-        pv::push_value(&pubkey.serialize()).expect("short enough"),
+        pv::push_value(&pubkey_bytes).expect("short enough"),
     ])
 }
 
@@ -172,7 +178,7 @@ fn construct_script_sig(
 #[cfg(feature = "transparent-inputs")]
 #[derive(Debug, Clone)]
 pub enum SpendInfo {
-    P2pkh { pubkey: secp256k1::PublicKey },
+    P2pkh { pubkey: secp256k1::PublicKey, uncompressed: bool },
     P2sh { redeem_script: script::FromChain },
 }
 
@@ -192,7 +198,7 @@ impl TransparentInputInfo {
     /// Constructs a [`TransparentInputInfo`] value from its constituent parts.
     pub fn from_parts(utxo: OutPoint, coin: TxOut, spend_info: SpendInfo) -> Result<Self, Error> {
         match &spend_info {
-            SpendInfo::P2pkh { pubkey } => {
+            SpendInfo::P2pkh { pubkey, uncompressed } => {
                 let script_pubkey = script::PubKey::parse(&coin.script_pubkey().0)
                     .map_err(|_| Error::UnsupportedScript)?;
 
@@ -201,7 +207,12 @@ impl TransparentInputInfo {
                 // output may be spent.
                 match TransparentAddress::from_script_pubkey(&script_pubkey) {
                     Some(TransparentAddress::PublicKeyHash(hash)) => {
-                        if hash != crate::util::hash160::hash(&pubkey.serialize()) {
+                        let pubkey_bytes = if *uncompressed {
+                            pubkey.serialize_uncompressed().to_vec()
+                        } else {
+                            pubkey.serialize().to_vec()
+                        };
+                        if hash != crate::util::hash160::hash(&pubkey_bytes) {
                             return Err(Error::InvalidAddress);
                         }
                     }
@@ -256,9 +267,15 @@ impl TransparentInputInfo {
     /// [ZIP 317]: https://zips.z.cash/zip-0317#rationale-for-the-chosen-parameters
     pub fn serialized_len(&self) -> Option<usize> {
         match &self.spend_info {
-            SpendInfo::P2pkh { .. } => {
+            SpendInfo::P2pkh { pubkey: _, uncompressed } => {
                 let fake_sig = pv::push_value(&[0; MAX_SIG_SIZE]).expect("short enough");
-                let fake_pubkey = pv::push_value(&[0; secp256k1::constants::PUBLIC_KEY_SIZE])
+                // Use the correct pubkey size based on uncompressed flag
+                let pubkey_size = if *uncompressed {
+                    secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE
+                } else {
+                    secp256k1::constants::PUBLIC_KEY_SIZE
+                };
+                let fake_pubkey = pv::push_value(&vec![0; pubkey_size])
                     .expect("short enough");
                 let script_len = script::Component(vec![fake_sig, fake_pubkey]).byte_len();
                 let script_sig_len = CompactSize::serialized_size(script_len) + script_len;
@@ -399,7 +416,22 @@ impl TransparentBuilder {
         utxo: OutPoint,
         coin: TxOut,
     ) -> Result<(), Error> {
-        let input = TransparentInputInfo::from_parts(utxo, coin, SpendInfo::P2pkh { pubkey })?;
+        let input = TransparentInputInfo::from_parts(utxo, coin, SpendInfo::P2pkh { pubkey, uncompressed: false })?;
+        self.inputs.push(input);
+        Ok(())
+    }
+
+    /// Adds a P2PKH coin (the output of a previous transaction) to be spent in the
+    /// transaction, with the ability to specify whether the pubkey is compressed.
+    #[cfg(feature = "transparent-inputs")]
+    pub fn add_p2pkh_input_with_compression(
+        &mut self,
+        pubkey: secp256k1::PublicKey,
+        utxo: OutPoint,
+        coin: TxOut,
+        uncompressed: bool,
+    ) -> Result<(), Error> {
+        let input = TransparentInputInfo::from_parts(utxo, coin, SpendInfo::P2pkh { pubkey, uncompressed })?;
         self.inputs.push(input);
         Ok(())
     }
@@ -628,7 +660,7 @@ impl Bundle<Unauthorized> {
             .enumerate()
             .map(|(index, info)| {
                 match &info.spend_info {
-                    SpendInfo::P2pkh { pubkey } => {
+                    SpendInfo::P2pkh { pubkey, uncompressed } => {
                         // Find the matching signing key.
                         let (sk, _) = signing_set
                             .keys
@@ -647,7 +679,7 @@ impl Bundle<Unauthorized> {
                         let msg = secp256k1::Message::from_digest(sighash);
                         let sig = signing_set.secp.sign_ecdsa(&msg, sk);
 
-                        Ok(construct_script_sig(&sig, pubkey))
+                        Ok(construct_script_sig(&sig, pubkey, *uncompressed))
                     }
                     SpendInfo::P2sh { redeem_script } => {
                         let refined = redeem_script
@@ -822,7 +854,7 @@ impl TransparentSignatureContext<'_, secp256k1::VerifyOnly> {
             let sighash_msg = secp256k1::Message::from_digest(self.sighashes[input_idx]);
 
             // We only support external signatures for P2PKH inputs.
-            if let SpendInfo::P2pkh { pubkey } = &input_info.spend_info {
+            if let SpendInfo::P2pkh { pubkey, uncompressed } = &input_info.spend_info {
                 if self
                     .secp_ctx
                     .verify_ecdsa(&sighash_msg, signature, pubkey)
@@ -832,19 +864,19 @@ impl TransparentSignatureContext<'_, secp256k1::VerifyOnly> {
                         // This signature was already valid for a different input.
                         return Err(Error::DuplicateSignature);
                     }
-                    matched_input_idx = Some((input_idx, pubkey));
+                    matched_input_idx = Some((input_idx, pubkey, *uncompressed));
                 }
             }
         }
 
-        if let Some((final_input_idx, pubkey)) = matched_input_idx {
+        if let Some((final_input_idx, pubkey, uncompressed)) = matched_input_idx {
             // Check if another signature has already been applied to this input.
             if self.final_script_sigs[final_input_idx].is_some() {
                 return Err(Error::DuplicateSignature);
             }
 
             // Apply the signature.
-            self.final_script_sigs[final_input_idx] = Some(construct_script_sig(signature, pubkey));
+            self.final_script_sigs[final_input_idx] = Some(construct_script_sig(signature, pubkey, uncompressed));
 
             Ok(self)
         } else {

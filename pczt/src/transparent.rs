@@ -87,8 +87,8 @@ pub struct Input {
     /// - Each entry is set by a Signer, and should contain an ECDSA signature that is
     ///   valid under the corresponding pubkey.
     /// - These are required by the Spend Finalizer to assemble `script_sig`.
-    #[serde_as(as = "BTreeMap<[_; 33], _>")]
-    pub(crate) partial_signatures: BTreeMap<[u8; 33], Vec<u8>>,
+    /// - Pubkeys can be either 33 bytes (compressed) or 65 bytes (uncompressed).
+    pub(crate) partial_signatures: BTreeMap<Vec<u8>, Vec<u8>>,
 
     /// The sighash type to be used for this input.
     ///
@@ -106,8 +106,8 @@ pub struct Input {
     /// - Individual entries may be required by a Signer.
     /// - It is not required that the map include entries for all of the used pubkeys.
     ///   In particular, it is not possible to include entries for non-BIP-32 pubkeys.
-    #[serde_as(as = "BTreeMap<[_; 33], _>")]
-    pub(crate) bip32_derivation: BTreeMap<[u8; 33], Zip32Derivation>,
+    /// - Pubkeys can be either 33 bytes (compressed) or 65 bytes (uncompressed).
+    pub(crate) bip32_derivation: BTreeMap<Vec<u8>, Zip32Derivation>,
 
     /// Mappings of the form `key = RIPEMD160(value)`.
     ///
@@ -203,8 +203,8 @@ pub struct Output {
     /// - Individual entries may be required by a Signer.
     /// - It is not required that the map include entries for all of the used pubkeys.
     ///   In particular, it is not possible to include entries for non-BIP-32 pubkeys.
-    #[serde_as(as = "BTreeMap<[_; 33], _>")]
-    pub(crate) bip32_derivation: BTreeMap<[u8; 33], Zip32Derivation>,
+    /// - Pubkeys can be either 33 bytes (compressed) or 65 bytes (uncompressed).
+    pub(crate) bip32_derivation: BTreeMap<Vec<u8>, Zip32Derivation>,
 
     /// The user-facing address to which this output is being sent, if any.
     ///
@@ -382,7 +382,7 @@ impl Bundle {
                     input.value,
                     input.script_pubkey,
                     input.redeem_script,
-                    input.partial_signatures,
+                    input.partial_signatures.into_iter().map(|(k, v)| (k.to_vec(), v)).collect(),
                     input.sighash_type,
                     input
                         .bip32_derivation
@@ -392,7 +392,7 @@ impl Bundle {
                                 v.seed_fingerprint,
                                 v.derivation_path,
                             )
-                            .map(|v| (k, v))
+                            .map(|v| (k.to_vec(), v))
                         })
                         .collect::<Result<_, _>>()?,
                     input.ripemd160_preimages,
@@ -420,7 +420,7 @@ impl Bundle {
                                 v.seed_fingerprint,
                                 v.derivation_path,
                             )
-                            .map(|v| (k, v))
+                            .map(|v| (k.to_vec(), v))
                         })
                         .collect::<Result<_, _>>()?,
                     output.user_address,
@@ -452,14 +452,18 @@ impl Bundle {
                     .redeem_script()
                     .as_ref()
                     .map(|redeem_script| redeem_script.to_bytes()),
-                partial_signatures: input.partial_signatures().clone(),
+                partial_signatures: input
+                    .partial_signatures()
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
                 sighash_type: input.sighash_type().encode(),
                 bip32_derivation: input
                     .bip32_derivation()
                     .iter()
                     .map(|(k, v)| {
                         (
-                            *k,
+                            k.clone(),
                             Zip32Derivation {
                                 seed_fingerprint: *v.seed_fingerprint(),
                                 derivation_path: v
@@ -495,7 +499,7 @@ impl Bundle {
                     .iter()
                     .map(|(k, v)| {
                         (
-                            *k,
+                            k.clone(),
                             Zip32Derivation {
                                 seed_fingerprint: *v.seed_fingerprint(),
                                 derivation_path: v

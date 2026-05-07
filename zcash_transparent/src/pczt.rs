@@ -134,7 +134,7 @@ pub struct Input {
     /// - Each entry is set by a Signer, and should contain an ECDSA signature that is
     ///   valid under the corresponding pubkey.
     /// - These are required by the Spend Finalizer to assemble `script_sig`.
-    pub(crate) partial_signatures: BTreeMap<[u8; 33], Vec<u8>>,
+    pub(crate) partial_signatures: BTreeMap<Vec<u8>, Vec<u8>>,
 
     /// The sighash type to be used for this input.
     ///
@@ -152,7 +152,7 @@ pub struct Input {
     /// - Individual entries may be required by a Signer.
     /// - It is not required that the map include entries for all of the used pubkeys.
     ///   In particular, it is not possible to include entries for non-BIP-32 pubkeys.
-    pub(crate) bip32_derivation: BTreeMap<[u8; 33], Bip32Derivation>,
+    pub(crate) bip32_derivation: BTreeMap<Vec<u8>, Bip32Derivation>,
 
     /// Mappings of the form `key = RIPEMD160(value)`.
     ///
@@ -211,7 +211,7 @@ pub struct Output {
     /// - Individual entries may be required by a Signer.
     /// - It is not required that the map include entries for all of the used pubkeys.
     ///   In particular, it is not possible to include entries for non-BIP-32 pubkeys.
-    pub(crate) bip32_derivation: BTreeMap<[u8; 33], Bip32Derivation>,
+    pub(crate) bip32_derivation: BTreeMap<Vec<u8>, Bip32Derivation>,
 
     /// The user-facing address to which this output is being sent, if any.
     ///
