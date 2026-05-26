@@ -830,6 +830,10 @@ where
                 spendable_notes.sapling().len(),
                 sapling_output_count,
                 orchard_action_count,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
             )
             .map(|fee| (fee, None)),
         Address::Transparent(_) => fee_rule
@@ -841,6 +845,10 @@ where
                 spendable_notes.sapling().len(),
                 sapling_output_count,
                 orchard_action_count,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
             )
             .map(|fee| (fee, None)),
         Address::Unified(addr) => fee_rule
@@ -856,6 +864,10 @@ where
                 spendable_notes.sapling().len(),
                 sapling_output_count,
                 orchard_action_count,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
             )
             .map(|fee| (fee, None)),
         Address::Tex(_) => fee_rule
@@ -867,6 +879,10 @@ where
                 spendable_notes.sapling().len(),
                 sapling_output_count,
                 orchard_action_count,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
+                #[cfg(zcash_unstable = "nu7")]
+                0,
             )
             .and_then(|tr0_fee| {
                 let tr1_fee = fee_rule.fee_required(
@@ -876,6 +892,10 @@ where
                     [P2PKH_STANDARD_OUTPUT_SIZE],
                     0,
                     0,
+                    0,
+                    #[cfg(zcash_unstable = "nu7")]
+                    0,
+                    #[cfg(zcash_unstable = "nu7")]
                     0,
                 )?;
 

@@ -3,7 +3,7 @@ use rand_core::OsRng;
 use zcash_protocol::value::ZatBalance;
 
 pub(super) fn verify_bundle(
-    bundle: &Bundle<Authorized, ZatBalance>,
+    bundle: &Bundle<Authorized, ZatBalance, OrchardVanilla>,
     orchard_vk: Option<&VerifyingKey>,
     sighash: [u8; 32],
 ) -> Result<(), OrchardError> {
@@ -19,7 +19,7 @@ pub(super) fn verify_bundle(
             Err(OrchardError::InvalidProof)
         }
     } else {
-        let vk = VerifyingKey::build();
+        let vk = VerifyingKey::build::<OrchardVanilla>();
         if validator.validate(&vk, rng) {
             Ok(())
         } else {
