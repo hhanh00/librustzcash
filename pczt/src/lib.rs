@@ -35,7 +35,7 @@ use zcash_protocol::value::Zatoshis;
 #[cfg(any(feature = "io-finalizer", feature = "signer", feature = "tx-extractor"))]
 use {
     common::{Global, determine_lock_time},
-    zcash_primitives::transaction::{Authorization, TransactionData, TxVersion},
+    zcash_primitives::transaction::{Authorization, OrchardBundle, TransactionData, TxVersion},
     zcash_protocol::consensus::BranchId,
     zcash_protocol::constants::{V5_TX_VERSION, V5_VERSION_GROUP_ID},
 };
@@ -146,7 +146,7 @@ impl Pczt {
         extract_orchard: impl FnOnce(
             &::orchard::pczt::Bundle,
         ) -> Result<
-            Option<::orchard::Bundle<A::OrchardAuth, zcash_protocol::value::ZatBalance>>,
+            Option<::orchard::Bundle<A::OrchardAuth, zcash_protocol::value::ZatBalance, ::orchard::flavor::OrchardVanilla>>,
             E,
         >,
     ) -> Result<ParsedPczt<A>, E>
@@ -198,7 +198,7 @@ impl Pczt {
             transparent_bundle,
             None,
             sapling_bundle,
-            orchard_bundle,
+            orchard_bundle.map(OrchardBundle::OrchardVanilla),
         );
 
         Ok(ParsedPczt {
