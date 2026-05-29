@@ -18,13 +18,16 @@ use orchard::{
     note::AssetBase,
     value::NoteValue,
 };
-use pczt::roles::{
-    creator::Creator,
-    io_finalizer::IoFinalizer,
-    prover::Prover,
-    signer::Signer,
-    spend_finalizer::SpendFinalizer,
-    tx_extractor::TransactionExtractor,
+use pczt::{
+    Pczt,
+    roles::{
+        creator::Creator,
+        io_finalizer::IoFinalizer,
+        prover::Prover,
+        signer::Signer,
+        spend_finalizer::SpendFinalizer,
+        tx_extractor::TransactionExtractor,
+    },
 };
 use transparent::builder::TransparentSigningSet;
 use zcash_primitives::transaction::{
@@ -654,6 +657,11 @@ fn test_pczt_zsa_transfer() {
 
     let pk = ProvingKey::build::<OrchardZSA>();
     let pczt = Prover::new(pczt).create_orchard_proof(&pk).expect("prover").finish();
+
+    // ── Cold wallet workflow: serialize the unsigned PCZT, transfer to an
+    //    air-gapped machine, deserialize, and sign there ──
+    let pczt_bytes = pczt.serialize();
+    let pczt = Pczt::parse(&pczt_bytes).expect("parse pczt for cold wallet signing");
 
     let pczt = {
         let mut signer = Signer::new(pczt).expect("signer new");

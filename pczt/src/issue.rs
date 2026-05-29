@@ -22,7 +22,6 @@ pub struct Bundle {
     /// Intents and actions are logically exclusive: intents represent the "what
     /// to issue" plan, and actions represent the built (or signed) bundle.
     #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub intents: Vec<IssueIntent>,
 
     /// The issue actions in this bundle.
@@ -181,7 +180,6 @@ pub struct IssueAction {
     /// The issuance authorization signature (set after signing).
     /// 64 bytes: r (32 bytes) + s (32 bytes) for the BIP-340 Schnorr signature.
     #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sig_bytes: Vec<u8>,
 }
 
