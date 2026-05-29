@@ -149,6 +149,14 @@ pub struct Spend {
     /// information, or after signatures have been applied, this can be redacted.
     pub(crate) value: Option<u64>,
 
+    /// The asset base for the note being spent.
+    ///
+    /// - This is set by the Constructor.
+    /// - Required to verify the nullifier for ZSA (non-zatoshi) spends.
+    #[serde_as(as = "Option<[_; 32]>")]
+    #[serde(default)]
+    pub(crate) asset: Option<[u8; 32]>,
+
     /// The rho value for the note being spent.
     ///
     /// - This is set by the Constructor.
@@ -373,6 +381,7 @@ impl Bundle {
                         spend_auth_sig,
                         recipient,
                         value,
+                        asset: spend_asset,
                         rho,
                         rseed,
                         fvk,
@@ -415,6 +424,7 @@ impl Bundle {
             if !(merge_optional(&mut lhs.spend.spend_auth_sig, spend_auth_sig)
                 && merge_optional(&mut lhs.spend.recipient, recipient)
                 && merge_optional(&mut lhs.spend.value, value)
+                && merge_optional(&mut lhs.spend.asset, spend_asset)
                 && merge_optional(&mut lhs.spend.rho, rho)
                 && merge_optional(&mut lhs.spend.rseed, rseed)
                 && merge_optional(&mut lhs.spend.fvk, fvk)
@@ -458,6 +468,7 @@ impl Bundle {
                     action.spend.spend_auth_sig,
                     action.spend.recipient,
                     action.spend.value,
+                    action.spend.asset,
                     action.spend.rho,
                     action.spend.rseed,
                     action.spend.fvk,
@@ -542,6 +553,7 @@ impl Bundle {
                             .recipient()
                             .map(|recipient| recipient.to_raw_address_bytes()),
                         value: spend.value().map(|value| value.inner()),
+                        asset: spend.asset().map(|a| a.to_bytes()),
                         rho: spend.rho().map(|rho| rho.to_bytes()),
                         rseed: spend.rseed().map(|rseed| *rseed.as_bytes()),
                         fvk: spend.fvk().as_ref().map(|fvk| fvk.to_bytes()),

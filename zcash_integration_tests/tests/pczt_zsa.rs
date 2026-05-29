@@ -41,7 +41,7 @@ use zcash_protocol::{
 
 mod common;
 
-use common::build::{build_issuance_tx, parse_txid, tx_to_hex};
+use common::build::{parse_txid, tx_to_hex};
 use common::keys::{
     encode_transparent_address, make_orchard_account, make_transparent_account, orchard_sak,
 };
@@ -455,25 +455,32 @@ fn test_pczt_zsa_transfer() {
     rpc.generate(1).expect("generate");
     let shield_block = rpc.wait_for_confirmation(&shield_txid).expect("confirm");
 
-    let mut tree = OrchardTreeState::new();
-    let sync = tree.sync_block(&rpc, &shield_block, &params).expect("sync shield block");
-    let anchor = tree.anchor();
+    // Sync the ENTIRE chain to build the correct orchard tree, instead of
+    // relying on single-block sync which depends on a clean initial state.
+    let (mut tree, tx_first_pos) = sync_all_blocks_for_block(&rpc, &params, &shield_block);
+
+    // Verify our tree matches zebra.
+    let zebra_root = rpc.get_orchard_root(&shield_block).expect("zebra root");
+    assert_eq!(
+        hex::encode(tree.anchor().to_bytes()),
+        zebra_root,
+        "synced-tree anchor must match zebra"
+    );
 
     let orchard_bundle = shield_tx.orchard_bundle().expect("orchard bundle");
     let zsa = orchard_bundle.as_zsa_bundle();
     let ivk = orchard_fvk.to_ivk(orchard::keys::Scope::External);
     let decrypted = zsa.decrypt_outputs_with_keys(&[ivk]);
     let (note_idx, _, orchard_note, _, _) = decrypted.into_iter().next().expect("decrypt");
-    let note_pos = sync.count_before + note_idx;
-    let zec_merkle_path = tree.witness(note_pos);
 
-    assert_eq!(
-        hex::encode(anchor.to_bytes()),
-        rpc.get_orchard_root(&shield_block).expect("zebra anchor"),
-        "local anchor must match zebra"
-    );
+    let note_global_pos = tx_first_pos + note_idx;
+    let anchor = tree.anchor();
+    let zec_merkle_path = tree.witness(note_global_pos);
 
-    // ── Step 2: Issue a custom asset ──
+    // ── Step 2: Issue a custom asset via PCZT ──
+    // Generate an empty block so the shield anchor has depth.
+    rpc.generate(1).expect("generate block between shield and issue");
+
     let desc_hash = compute_asset_desc_hash(&NonEmpty::from_slice(b"WETH").unwrap());
 
     let utxos2 = rpc.get_address_utxos(&taddr_str).expect("getaddressutxos");
@@ -486,42 +493,98 @@ fn test_pczt_zsa_transfer() {
     let coin_value2 = Zatoshis::from_u64(amount2).expect("valid amount");
     let coin_script2: transparent::address::Script = taddr.script().into();
 
-    let iss_result = build_issuance_tx(
-        &params,
-        BlockHeight::from_u32(height + 3),
-        t_pubkey,
-        outpoint2,
-        coin_value2,
-        coin_script2,
-        taddr,
-        &orchard_fvk,
-        orchard_note,
-        zec_merkle_path,
-        anchor,
-        &isk,
-        desc_hash,
-        orchard_addr,
-        NoteValue::from_raw(1_000_000),
-        true,
-        orchard_addr,
-        &orch_sak,
-        &signing_set,
-        |_| true,
-    ).expect("build issuance tx");
+    // Build the issuance PCZT.
+    let orchard_zec_change = Zatoshis::from_u64(
+        amount2 + orchard_note.value().inner() - 2_000_000,
+    ).unwrap_or(Zatoshis::const_from_u64(1));
+    let transparent_change = Zatoshis::const_from_u64(1_985_000);
 
-    let iss_tx = iss_result.into_transaction();
+    let iss_config = BuildConfig::Standard {
+        sapling_anchor: None,
+        orchard_anchor: Some(anchor),
+    };
+
+    // Get the shield block height for the issuance builder.
+    let shield_height = rpc.get_block(&shield_block)
+        .and_then(|b| b["height"].as_u64().ok_or("missing height".to_string()))
+        .expect("shield block height") as u32;
+    let mut iss_builder = Builder::new(&params, BlockHeight::from_u32(shield_height + 1), iss_config);
+    iss_builder
+        .add_transparent_p2pkh_input(t_pubkey, outpoint2, transparent::bundle::TxOut::new(coin_value2, coin_script2.clone()))
+        .expect("add transparent input");
+    iss_builder
+        .add_orchard_spend::<zip317::FeeError>(orchard_fvk.clone(), orchard_note.clone(), zec_merkle_path.clone())
+        .expect("add orchard spend");
+    iss_builder
+        .add_orchard_output::<zip317::FeeError>(
+            Some(orchard_fvk.to_ovk(orchard::keys::Scope::External)),
+            orchard_addr,
+            orchard_zec_change,
+            AssetBase::zatoshi(),
+            MemoBytes::empty(),
+        )
+        .expect("add orchard zec change");
+    iss_builder
+        .add_transparent_output(&taddr, transparent_change)
+        .expect("add transparent change");
+
+    let iss_pczt_result = iss_builder
+        .build_for_pczt::<_, zip317::FeeRule>(
+            rand_core::OsRng,
+            &zip317::FeeRule::standard(),
+            |_| false,
+        )
+        .expect("build_for_pczt issuance");
+    let iss_orchard_meta = iss_pczt_result.orchard_meta;
+
+    // Build the ZSA issuance bundle externally (then wire through Issuer role).
+    let mut zsa_builder =
+        zcash_primitives::transaction::zsa_builder::ZsaBuilder::new(isk.clone());
+    zsa_builder
+        .add_issue_output(
+            desc_hash,
+            orchard_addr,
+            NoteValue::from_raw(1_000_000),
+            true,
+            &mut rand_core::OsRng,
+        )
+        .expect("add issue output");
+
+    let pczt = Creator::build_from_parts(iss_pczt_result.pczt_parts).expect("creator");
+    let pczt = pczt::roles::issuer::Issuer::new(pczt)
+        .build_awaiting_sighash(zsa_builder, rand_core::OsRng)
+        .expect("issuer p1");
+    let pczt = IoFinalizer::new(pczt).finalize_io().expect("io finalizer");
+    let pczt = pczt::roles::issuer::Issuer::new(pczt)
+        .sign(&isk)
+        .expect("issuer p2");
+
+    let pk = ProvingKey::build::<OrchardZSA>();
+    let pczt = Prover::new(pczt).create_orchard_proof(&pk).expect("prover").finish();
+
+    let pczt = {
+        let signer = Signer::new(pczt).expect("signer new");
+        let mut signer = signer;
+        signer.sign_transparent(0, &t_sk).expect("sign transparent");
+        let spend_idx = iss_orchard_meta.spend_action_index(0).expect("orchard spend index");
+        signer.sign_orchard(spend_idx, &orch_sak).expect("sign orchard");
+        signer.finish()
+    };
+
+    let pczt = SpendFinalizer::new(pczt).finalize_spends().expect("spend finalizer");
+    let iss_tx = TransactionExtractor::new(pczt).extract().expect("tx extractor");
+
     let iss_txid = rpc.send_raw_transaction(&tx_to_hex(&iss_tx).expect("hex")).expect("send issue");
     rpc.generate(1).expect("generate after issue");
     let iss_block = rpc.wait_for_confirmation(&iss_txid).expect("confirm issue");
 
-    // Sync to get our custom asset note
+    // Sync to get our custom asset note.
     let sync2 = tree.sync_block(&rpc, &iss_block, &params).expect("sync issue block");
     let ib = iss_tx.issue_bundle().expect("issue bundle");
     let issue_notes: Vec<_> = ib.actions().iter().flat_map(|a| a.notes()).collect();
     let issue_note = (*issue_notes.last().expect("at least one issued note")).clone();
     // Issue notes are appended AFTER orchard cmx in the block.
     // The issued note is the last cmx in the issuance block.
-    let _issue_note_idx = issue_notes.len() - 1;
     let issue_pos = sync2.count_after - 1; // last cmx added in this block
     let issue_anchor = tree.anchor();
     let issue_merkle_path = tree.witness(issue_pos);
@@ -530,7 +593,7 @@ fn test_pczt_zsa_transfer() {
     let custom_asset = issue_note.asset();
     assert_ne!(custom_asset, AssetBase::zatoshi());
 
-    // Get another UTXO for zatoshi fee
+    // Get another UTXO for zatoshi fee.
     let utxos3 = rpc.get_address_utxos(&taddr_str).expect("getaddressutxos");
     let utxo3 = &utxos3[0];
     let txid3: String = utxo3["txid"].as_str().expect("txid").to_string();
@@ -541,14 +604,13 @@ fn test_pczt_zsa_transfer() {
     let coin_value3 = Zatoshis::from_u64(amount3).expect("valid amount");
     let coin_script3: transparent::address::Script = taddr.script().into();
 
-    // Build the transfer via PCZT
+    // Build the transfer via PCZT.
     let config = BuildConfig::Standard {
         sapling_anchor: None,
         orchard_anchor: Some(issue_anchor),
     };
 
     let mut builder = Builder::new(&params, BlockHeight::from_u32(sync2.height + 1), config);
-    // Transparent input for zatoshi fees + change
     builder
         .add_transparent_p2pkh_input(
             t_pubkey,
@@ -556,7 +618,6 @@ fn test_pczt_zsa_transfer() {
             transparent::bundle::TxOut::new(coin_value3, coin_script3),
         )
         .expect("add transparent input for fee");
-    // Spend the custom asset note
     builder
         .add_orchard_spend::<zip317::FeeError>(
             orchard_fvk.clone(),
@@ -564,17 +625,15 @@ fn test_pczt_zsa_transfer() {
             issue_merkle_path,
         )
         .expect("add orchard spend");
-    // Output: send custom asset back (zatoshi value is 0 for non-ZEC assets)
     builder
         .add_orchard_output::<zip317::FeeError>(
             None,
             orchard_addr,
-            Zatoshis::const_from_u64(0),
+            Zatoshis::const_from_u64(1_000_000),
             custom_asset,
             MemoBytes::empty(),
         )
         .expect("add custom output");
-    // Change = 624_985_000 (from ChangeRequired with placeholder=0)
     builder
         .add_transparent_output(&taddr, Zatoshis::const_from_u64(624_985_000))
         .expect("add transparent change");
@@ -582,7 +641,6 @@ fn test_pczt_zsa_transfer() {
         .build_for_pczt::<_, zip317::FeeRule>(
             rand_core::OsRng,
             &zip317::FeeRule::standard(),
-            #[cfg(zcash_unstable = "nu7")]
             |_| false,
         )
         .expect("build_for_pczt");
