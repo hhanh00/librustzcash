@@ -51,12 +51,17 @@ fn merge(lhs: Pczt, rhs: Pczt) -> Result<Pczt, Error> {
 
     let issue = lhs.issue.merge(&rhs.issue);
 
+    // Take the first available shielded sighash — both PCZTs represent the
+    // same transaction so the sighash will be identical.
+    let shielded_sighash = lhs.shielded_sighash.or(rhs.shielded_sighash);
+
     Ok(Pczt {
         global,
         transparent,
         sapling,
         orchard,
         issue,
+        shielded_sighash,
     })
 }
 

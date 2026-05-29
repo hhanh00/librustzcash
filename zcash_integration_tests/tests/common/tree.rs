@@ -31,6 +31,13 @@ impl OrchardTreeState {
         self.leaf_count
     }
 
+    /// Appends a single leaf to the tree and marks the position.
+    pub fn append_leaf(&mut self, leaf: MerkleHashOrchard) {
+        self.tree.append(leaf);
+        self.tree.mark();
+        self.leaf_count += 1;
+    }
+
     /// Returns the current anchor (root of the tree). If the tree is empty,
     /// returns [`Anchor::empty_tree`].
     ///

@@ -39,6 +39,7 @@ impl Updater {
         F: FnOnce(GlobalUpdater<'_>),
     {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             mut global,
             transparent,
@@ -56,6 +57,7 @@ impl Updater {
                 sapling,
                 orchard,
                 issue,
+                shielded_sighash,
             },
         }
     }

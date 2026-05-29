@@ -42,12 +42,17 @@ pub struct Signer {
     tx_data: TransactionData<EffectsOnly>,
     txid_parts: TxDigests<Blake2bHash>,
     shielded_sighash: [u8; 32],
+    /// Preserved from the input PCZT (set by the Issuer role).
+    issue: crate::issue::Bundle,
     secp: secp256k1::Secp256k1<secp256k1::All>,
 }
 
 impl Signer {
     /// Instantiates the Signer role with the given PCZT.
     pub fn new(pczt: Pczt) -> Result<Self, Error> {
+        // Capture the issue bundle before consuming the PCZT.
+        let issue = pczt.issue().clone();
+
         let ParsedPczt {
             global,
             transparent,
@@ -71,6 +76,8 @@ impl Signer {
                         .map_err(ExtractError::OrchardExtract)
                 }
             },
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            |i| Ok(i.to_awaiting_sighash()),
         )?;
         let txid_parts = tx_data.digest(TxIdDigester);
         let shielded_sighash = sighash(&tx_data, &SignableInput::Shielded, &txid_parts);
@@ -83,6 +90,7 @@ impl Signer {
             tx_data,
             txid_parts,
             shielded_sighash,
+            issue,
             secp: secp256k1::Secp256k1::new(),
         })
     }
@@ -347,7 +355,8 @@ impl Signer {
             transparent: crate::transparent::Bundle::serialize_from(self.transparent),
             sapling: crate::sapling::Bundle::serialize_from(self.sapling),
             orchard: crate::orchard::Bundle::serialize_from(self.orchard),
-            issue: crate::issue::Bundle::default(),
+            issue: self.issue,
+            shielded_sighash: Some(self.shielded_sighash),
         }
     }
 }

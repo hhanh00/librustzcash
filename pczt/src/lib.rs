@@ -54,6 +54,11 @@ use {
         TxDigests, sighash::SignableInput, sighash_v5::v5_signature_hash,
     },
 };
+#[cfg(all(
+    any(feature = "io-finalizer", feature = "signer"),
+    zcash_unstable = "nu7"
+))]
+use zcash_primitives::transaction::sighash_v6::v6_signature_hash;
 
 pub mod roles;
 
@@ -90,6 +95,13 @@ pub struct Pczt {
     #[getset(get = "pub")]
     #[serde(default)]
     issue: issue::Bundle,
+
+    /// The shielded sighash, computed and stored by the IoFinalizer.
+    /// Available after [`crate::roles::io_finalizer::IoFinalizer::finalize_io`]
+    /// for use by the Issuer role's sign phase.
+    #[getset(get = "pub")]
+    #[serde(skip, default)]
+    shielded_sighash: Option<[u8; 32]>,
 }
 
 impl Pczt {
@@ -106,7 +118,27 @@ impl Pczt {
             sapling,
             orchard,
             issue: issue::Bundle::default(),
+            shielded_sighash: None,
         }
+    }
+
+    /// Adds an issuance intent to this PCZT.
+    ///
+    /// The intent specifies what asset to issue, to whom, how much, and
+    /// whether this is the first issuance. The [`Issuer`] role reads these
+    /// intents and builds the actual issuance bundle.
+    ///
+    /// Returns an error if the issue bundle has already been built (i.e.
+    /// [`issue::Bundle::actions`] is non-empty).
+    ///
+    /// [`Issuer`]: crate::roles::issuer::Issuer
+    #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+    pub fn add_issue_intent(mut self, intent: crate::issue::IssueIntent) -> Result<Self, &'static str> {
+        if !self.issue.actions.is_empty() {
+            return Err("Cannot add intents after the issue bundle has been built");
+        }
+        self.issue.intents.push(intent);
+        Ok(self)
     }
 
     /// Parses a PCZT from its encoding.
@@ -161,6 +193,12 @@ impl Pczt {
             Option<zcash_primitives::transaction::OrchardBundle<A::OrchardAuth>>,
             E,
         >,
+        #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))] extract_issue: impl FnOnce(
+            &crate::issue::Bundle,
+        ) -> Result<
+            Option<::orchard::issuance::IssueBundle<A::IssueAuth>>,
+            E,
+        >,
     ) -> Result<ParsedPczt<A>, E>
     where
         A: Authorization,
@@ -171,6 +209,7 @@ impl Pczt {
             transparent,
             sapling,
             orchard,
+            issue,
             ..
         } = self;
 
@@ -217,8 +256,10 @@ impl Pczt {
             None,
             sapling_bundle,
             orchard_bundle,
-            #[cfg(zcash_unstable = "nu7")]
-            None, // Bundle extracted via issue.to_awaiting_sighash() — needs per-auth-type handling
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            extract_issue(&issue)?,
+            #[cfg(not(all(feature = "orchard", zcash_unstable = "nu7")))]
+            None::<::orchard::issuance::IssueBundle<::orchard::issuance::AwaitingSighash>>,
         );
 
         Ok(ParsedPczt {
@@ -250,6 +291,8 @@ impl Pczt {
                         .map_err(ExtractError::OrchardExtract)
                 }
             },
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            |i| Ok(i.to_awaiting_sighash()),
         )
         .map(|parsed| parsed.tx_data)
     }
@@ -294,7 +337,13 @@ pub(crate) fn sighash(
     signable_input: &SignableInput,
     txid_parts: &TxDigests<Blake2bHash>,
 ) -> [u8; 32] {
-    // TODO: Pick sighash based on tx version
+    #[cfg(zcash_unstable = "nu7")]
+    if tx_data.version().has_orchard_zsa() {
+        return v6_signature_hash(tx_data, signable_input, txid_parts)
+            .as_ref()
+            .try_into()
+            .expect("correct length");
+    }
     v5_signature_hash(tx_data, signable_input, txid_parts)
         .as_ref()
         .try_into()

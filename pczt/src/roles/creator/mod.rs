@@ -99,6 +99,7 @@ impl Creator {
                 burn: vec![],
             },
             issue: crate::issue::Bundle::default(),
+            shielded_sighash: None,
         }
     }
 
@@ -181,7 +182,20 @@ impl Creator {
                     bsk: None,
                     burn: vec![],
                 }),
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            issue: {
+                let mut issue = crate::issue::Bundle::default();
+                if let Some(zsa) = &parts.zsa_builder {
+                    let ik = orchard::issuance::auth::IssueValidatingKey::from(
+                        zsa.issuance_key(),
+                    );
+                    issue.ik = ik.to_bytes();
+                }
+                issue
+            },
+            #[cfg(not(all(feature = "orchard", zcash_unstable = "nu7")))]
             issue: crate::issue::Bundle::default(),
+            shielded_sighash: None,
         })
     }
 }

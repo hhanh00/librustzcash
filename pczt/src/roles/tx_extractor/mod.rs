@@ -96,6 +96,8 @@ impl<'a> TransactionExtractor<'a> {
                     .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
                     .map_err(|e| Error::Orchard(OrchardError::Extract(e)))
             },
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            |i| Ok(i.to_signed()),
         )?;
 
         // The commitment being signed is shared across all shielded inputs.

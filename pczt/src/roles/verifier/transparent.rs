@@ -7,6 +7,7 @@ impl super::Verifier {
         F: FnOnce(&transparent::pczt::Bundle) -> Result<(), TransparentError<E>>,
     {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -28,6 +29,7 @@ impl super::Verifier {
                 sapling,
                 orchard,
                 issue,
+                shielded_sighash,
             },
         })
     }

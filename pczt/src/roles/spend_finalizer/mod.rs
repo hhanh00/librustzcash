@@ -17,6 +17,7 @@ impl SpendFinalizer {
     /// Finalizes the spends of the PCZT.
     pub fn finalize_spends(self) -> Result<Pczt, Error> {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -37,6 +38,7 @@ impl SpendFinalizer {
             sapling,
             orchard,
             issue,
+            shielded_sighash,
         })
     }
 }

@@ -6,6 +6,7 @@ use crate::Pczt;
 impl super::Prover {
     pub fn create_orchard_proof(self, pk: &ProvingKey) -> Result<Self, OrchardError> {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -27,6 +28,7 @@ impl super::Prover {
                 sapling,
                 orchard: crate::orchard::Bundle::serialize_from(bundle),
                 issue,
+                shielded_sighash,
             },
         })
     }

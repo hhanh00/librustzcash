@@ -14,6 +14,7 @@ impl super::Prover {
         O: OutputProver,
     {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -35,6 +36,7 @@ impl super::Prover {
                 sapling: crate::sapling::Bundle::serialize_from(bundle),
                 orchard,
                 issue,
+                shielded_sighash,
             },
         })
     }

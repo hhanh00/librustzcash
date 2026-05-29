@@ -7,6 +7,7 @@ impl super::Verifier {
         F: FnOnce(&sapling::pczt::Bundle) -> Result<(), SaplingError<E>>,
     {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -26,6 +27,7 @@ impl super::Verifier {
                 sapling: crate::sapling::Bundle::serialize_from(bundle),
                 orchard,
                 issue,
+                shielded_sighash,
             },
         })
     }

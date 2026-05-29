@@ -68,6 +68,8 @@ impl IoFinalizer {
                         .map_err(ExtractError::OrchardExtract)
                 }
             },
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            |i| Ok(i.to_awaiting_sighash()),
         )?;
 
         // After shielded IO finalization, the transaction effects cannot be modified
@@ -93,6 +95,7 @@ impl IoFinalizer {
             sapling: crate::sapling::Bundle::serialize_from(sapling),
             orchard: crate::orchard::Bundle::serialize_from(orchard),
             issue,
+            shielded_sighash: Some(shielded_sighash),
         })
     }
 }

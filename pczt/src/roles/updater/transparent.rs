@@ -9,6 +9,7 @@ impl super::Updater {
         F: FnOnce(Updater<'_>) -> Result<(), UpdaterError>,
     {
         let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
@@ -30,6 +31,7 @@ impl super::Updater {
                 sapling,
                 orchard,
                 issue,
+                shielded_sighash,
             },
         })
     }
