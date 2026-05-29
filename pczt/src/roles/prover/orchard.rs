@@ -5,11 +5,13 @@ use crate::Pczt;
 
 impl super::Prover {
     pub fn create_orchard_proof(self, pk: &ProvingKey) -> Result<Self, OrchardError> {
+        let issue = self.pczt.issue().clone();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let mut bundle = orchard.into_parsed().map_err(OrchardError::Parser)?;
@@ -24,6 +26,7 @@ impl super::Prover {
                 transparent,
                 sapling,
                 orchard: crate::orchard::Bundle::serialize_from(bundle),
+                issue,
             },
         })
     }

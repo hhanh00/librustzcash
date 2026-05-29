@@ -138,7 +138,7 @@ fn test_issuance_and_mining() {
     // 8. Sync the orchard commitment tree from the mined block
     let mut tree = OrchardTreeState::new();
     let sync = tree
-        .sync_block(&rpc, &shield_block_hash)
+        .sync_block(&rpc, &shield_block_hash, &params)
         .expect("sync block");
     println!(
         "Synced block {}: {} orchard commit(s) added",
@@ -235,7 +235,7 @@ fn test_issuance_and_mining() {
 
     // 12. Sync the block
     let sync2 = tree
-        .sync_block(&rpc, &iss_block_hash)
+        .sync_block(&rpc, &iss_block_hash, &params)
         .expect("sync issuance block");
 
     // 13. Verify the transaction is on-chain

@@ -62,6 +62,22 @@ pub struct Bundle {
     /// - This is `None` until it is set by the IO Finalizer.
     /// - The Transaction Extractor uses this to produce the binding signature.
     pub(crate) bsk: Option<[u8; 32]>,
+
+    /// Burn entries for ZSA assets (empty for vanilla).
+    #[getset(get = "pub")]
+    #[serde(default)]
+    pub(crate) burn: Vec<BurnEntry>,
+}
+
+/// A burn entry for the Orchard bundle (ZSA only).
+///
+/// Each entry represents a specific amount of a custom asset being burned in this transaction.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BurnEntry {
+    /// The asset base being burned, as 32 bytes.
+    pub asset_base: [u8; 32],
+    /// The value being burned.
+    pub value: u64,
 }
 
 /// Information about an Orchard action within a transaction.
@@ -230,6 +246,14 @@ pub struct Output {
     #[getset(get = "pub")]
     pub(crate) value: Option<u64>,
 
+    /// The asset base for this output.
+    ///
+    /// For vanilla (non-ZSA) outputs, this is 32 zero bytes (`AssetBase::zatoshi()`).
+    /// For ZSA outputs, this is the custom asset identifier.
+    #[getset(get = "pub")]
+    #[serde(default = "default_asset")]
+    pub(crate) asset: [u8; 32],
+
     /// The seed randomness for the output.
     ///
     /// - This is set by the Constructor.
@@ -279,6 +303,7 @@ impl Bundle {
             anchor,
             zkproof,
             bsk,
+            burn,
         } = other;
 
         if self.flags != flags {
@@ -318,6 +343,15 @@ impl Bundle {
             },
         }
 
+        // Merge burn: if both bundles have burn data, they must match.
+        // Otherwise, take whichever side has burn data.
+        if !self.burn.is_empty() && !burn.is_empty() && self.burn != burn {
+            return None;
+        }
+        if self.burn.is_empty() && !burn.is_empty() {
+            self.burn = burn;
+        }
+
         if self.anchor != anchor {
             return None;
         }
@@ -354,6 +388,7 @@ impl Bundle {
                         ephemeral_key,
                         enc_ciphertext,
                         out_ciphertext,
+                        asset,
                         recipient: output_recipient,
                         value: output_value,
                         rseed: output_rseed,
@@ -372,6 +407,7 @@ impl Bundle {
                 || lhs.output.ephemeral_key != ephemeral_key
                 || lhs.output.enc_ciphertext != enc_ciphertext
                 || lhs.output.out_ciphertext != out_ciphertext
+                || lhs.output.asset != asset
             {
                 return None;
             }
@@ -402,6 +438,11 @@ impl Bundle {
 
         Some(self)
     }
+}
+
+/// Default asset is all-zeros (zatoshi).
+fn default_asset() -> [u8; 32] {
+    [0u8; 32]
 }
 
 #[cfg(feature = "orchard")]
@@ -441,7 +482,8 @@ impl Bundle {
                     action.output.cmx,
                     action.output.ephemeral_key,
                     action.output.enc_ciphertext,
-                    action.output.out_ciphertext,
+                    action.output.out_ciphertext.to_vec(),
+                    action.output.asset,
                     action.output.recipient,
                     action.output.value,
                     action.output.rseed,
@@ -464,6 +506,12 @@ impl Bundle {
             })
             .collect::<Result<_, _>>()?;
 
+        let burn = self
+            .burn
+            .into_iter()
+            .map(|b| (b.asset_base, b.value))
+            .collect();
+
         orchard::pczt::Bundle::parse(
             actions,
             self.flags,
@@ -471,6 +519,7 @@ impl Bundle {
             self.anchor,
             self.zkproof,
             self.bsk,
+            burn,
         )
     }
 
@@ -528,9 +577,10 @@ impl Bundle {
                     },
                     output: Output {
                         cmx: output.cmx().to_bytes(),
-                        ephemeral_key: output.encrypted_note().epk_bytes,
-                        enc_ciphertext: output.encrypted_note().enc_ciphertext.0.to_vec(),
-                        out_ciphertext: output.encrypted_note().out_ciphertext.to_vec(),
+                        ephemeral_key: *output.ephemeral_key(),
+                        enc_ciphertext: output.enc_ciphertext().clone(),
+                        out_ciphertext: output.out_ciphertext().to_vec(),
+                        asset: output.asset().to_bytes(),
                         recipient: action
                             .output()
                             .recipient()
@@ -561,6 +611,15 @@ impl Bundle {
             (magnitude, matches!(sign, orchard::value::Sign::Negative))
         };
 
+        let burn = bundle
+            .burn()
+            .iter()
+            .map(|(asset, value)| BurnEntry {
+                asset_base: asset.to_bytes(),
+                value: value.inner(),
+            })
+            .collect();
+
         Self {
             actions,
             flags: bundle.flags().to_byte(),
@@ -571,6 +630,7 @@ impl Bundle {
                 .as_ref()
                 .map(|zkproof| zkproof.as_ref().to_vec()),
             bsk: bundle.bsk().as_ref().map(|bsk| bsk.into()),
+            burn,
         }
     }
 }

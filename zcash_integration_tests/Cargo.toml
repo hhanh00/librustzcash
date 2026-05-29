@@ -36,6 +36,7 @@ zip32.workspace = true
 secrecy.workspace = true
 secp256k1 = { workspace = true, features = ["rand"] }
 bs58.workspace = true
+pczt = { workspace = true, features = ["orchard", "sapling", "transparent", "zcp-builder", "io-finalizer", "prover", "tx-extractor", "signer", "spend-finalizer", "issuer", "zip-233"] }
 
 [features]
 integration-tests = []
@@ -46,6 +47,10 @@ required-features = ["integration-tests"]
 
 [[test]]
 name = "transfer_burn"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "pczt_zsa"
 required-features = ["integration-tests"]
 
 [lints]

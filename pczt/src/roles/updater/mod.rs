@@ -38,11 +38,13 @@ impl Updater {
     where
         F: FnOnce(GlobalUpdater<'_>),
     {
+        let issue = self.pczt.issue().clone();
         let Pczt {
             mut global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         f(GlobalUpdater(&mut global));
@@ -53,6 +55,7 @@ impl Updater {
                 transparent,
                 sapling,
                 orchard,
+                issue,
             },
         }
     }

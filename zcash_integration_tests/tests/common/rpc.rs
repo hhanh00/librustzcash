@@ -139,6 +139,15 @@ impl RpcClient {
         self.call("getbestblockhash", vec![])
     }
 
+    /// Returns the orchard tree root (32-byte hex) after the given block.
+    pub fn get_orchard_root(&self, block_hash: &str) -> Result<String, String> {
+        let block: Value = self.get_block(block_hash)?;
+        block["finalorchardroot"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| "block missing finalorchardroot".to_string())
+    }
+
     /// Polls `getblock` until the txid is found in a block.
     /// Returns the block hash once confirmed.
     pub fn wait_for_confirmation(&self, txid: &str) -> Result<String, String> {

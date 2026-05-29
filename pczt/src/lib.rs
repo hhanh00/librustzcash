@@ -40,6 +40,13 @@ use {
     zcash_protocol::constants::{V5_TX_VERSION, V5_VERSION_GROUP_ID},
 };
 
+#[cfg(all(
+    any(zcash_unstable = "nu7", zcash_unstable = "zfuture"),
+    feature = "zip-233",
+    any(feature = "io-finalizer", feature = "signer", feature = "tx-extractor")
+))]
+use zcash_protocol::constants::{V6_TX_VERSION, V6_VERSION_GROUP_ID};
+
 #[cfg(any(feature = "io-finalizer", feature = "signer"))]
 use {
     blake2b_simd::Hash as Blake2bHash,
@@ -51,6 +58,7 @@ use {
 pub mod roles;
 
 pub mod common;
+pub mod issue;
 pub mod orchard;
 pub mod sapling;
 pub mod transparent;
@@ -79,6 +87,9 @@ pub struct Pczt {
     sapling: sapling::Bundle,
     #[getset(get = "pub")]
     orchard: orchard::Bundle,
+    #[getset(get = "pub")]
+    #[serde(default)]
+    issue: issue::Bundle,
 }
 
 impl Pczt {
@@ -94,6 +105,7 @@ impl Pczt {
             transparent,
             sapling,
             orchard,
+            issue: issue::Bundle::default(),
         }
     }
 
@@ -146,7 +158,7 @@ impl Pczt {
         extract_orchard: impl FnOnce(
             &::orchard::pczt::Bundle,
         ) -> Result<
-            Option<::orchard::Bundle<A::OrchardAuth, zcash_protocol::value::ZatBalance>>,
+            Option<zcash_primitives::transaction::OrchardBundle<A::OrchardAuth>>,
             E,
         >,
     ) -> Result<ParsedPczt<A>, E>
@@ -159,6 +171,7 @@ impl Pczt {
             transparent,
             sapling,
             orchard,
+            ..
         } = self;
 
         let transparent = transparent
@@ -169,6 +182,11 @@ impl Pczt {
 
         let version = match (global.tx_version, global.version_group_id) {
             (V5_TX_VERSION, V5_VERSION_GROUP_ID) => Ok(TxVersion::V5),
+            #[cfg(all(
+                any(zcash_unstable = "nu7", zcash_unstable = "zfuture"),
+                feature = "zip-233"
+            ))]
+            (V6_TX_VERSION, V6_VERSION_GROUP_ID) => Ok(TxVersion::V6),
             (version, version_group_id) => Err(ExtractError::UnsupportedTxVersion {
                 version,
                 version_group_id,
@@ -199,6 +217,8 @@ impl Pczt {
             None,
             sapling_bundle,
             orchard_bundle,
+            #[cfg(zcash_unstable = "nu7")]
+            None, // Bundle extracted via issue.to_awaiting_sighash() — needs per-auth-type handling
         );
 
         Ok(ParsedPczt {
@@ -219,7 +239,17 @@ impl Pczt {
                     .map_err(ExtractError::TransparentExtract)
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
-            |o| o.extract_effects().map_err(ExtractError::OrchardExtract),
+            |o| {
+                if o.flags().zsa_enabled() {
+                    o.extract_effects_zsa()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA))
+                        .map_err(ExtractError::OrchardExtract)
+                } else {
+                    o.extract_effects()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
+                        .map_err(ExtractError::OrchardExtract)
+                }
+            },
         )
         .map(|parsed| parsed.tx_data)
     }
@@ -247,6 +277,8 @@ impl Authorization for EffectsOnly {
     type TransparentAuth = ::transparent::bundle::EffectsOnly;
     type SaplingAuth = ::sapling::bundle::EffectsOnly;
     type OrchardAuth = ::orchard::bundle::EffectsOnly;
+    #[cfg(zcash_unstable = "nu7")]
+    type IssueAuth = ::orchard::issuance::AwaitingSighash;
     #[cfg(zcash_unstable = "zfuture")]
     type TzeAuth = core::convert::Infallible;
 }
@@ -280,6 +312,8 @@ pub enum ExtractError {
     OrchardExtract(::orchard::pczt::TxExtractorError),
     /// An error occurred parsing the Orchard PCZT bundle from the PCZT data.
     OrchardParse(::orchard::pczt::ParseError),
+    /// An error occurred parsing the Issue PCZT bundle.
+    IssueParse,
     /// An error occurred extracting the Sapling protocol bundle from the Sapling PCZT bundle.
     SaplingExtract(::sapling::pczt::TxExtractorError),
     /// An error occurred parsing the Sapling PCZT bundle from the PCZT data.

@@ -43,19 +43,31 @@ impl IoFinalizer {
             return Err(Error::NoOutputs);
         }
 
+        let issue = pczt.issue().clone();
         let ParsedPczt {
             mut global,
             transparent,
             mut sapling,
             mut orchard,
             tx_data,
+            ..
         } = pczt.extract_tx_data(
             |t| {
                 t.extract_effects()
                     .map_err(ExtractError::TransparentExtract)
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
-            |o| o.extract_effects().map_err(ExtractError::OrchardExtract),
+            |o| {
+                if o.flags().zsa_enabled() {
+                    o.extract_effects_zsa()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA))
+                        .map_err(ExtractError::OrchardExtract)
+                } else {
+                    o.extract_effects()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
+                        .map_err(ExtractError::OrchardExtract)
+                }
+            },
         )?;
 
         // After shielded IO finalization, the transaction effects cannot be modified
@@ -80,6 +92,7 @@ impl IoFinalizer {
             transparent: crate::transparent::Bundle::serialize_from(transparent),
             sapling: crate::sapling::Bundle::serialize_from(sapling),
             orchard: crate::orchard::Bundle::serialize_from(orchard),
+            issue,
         })
     }
 }

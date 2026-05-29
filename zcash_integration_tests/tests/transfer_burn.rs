@@ -102,7 +102,7 @@ fn setup_shielding_note(
         .expect("shield confirmed");
 
     let mut tree = OrchardTreeState::new();
-    let sync = tree.sync_block(rpc, &shield_block_hash).expect("sync");
+    let sync = tree.sync_block(rpc, &shield_block_hash, &params).expect("sync");
 
     let ob = shield_tx.orchard_bundle().expect("orchard bundle");
     let actions = ob.as_zsa_bundle().actions();
@@ -356,6 +356,6 @@ fn test_burn_custom_asset() {
     // Sync the block to keep tests independent
     let mut final_tree = OrchardTreeState::new();
     final_tree
-        .sync_block(&rpc, &burn_block_hash)
+        .sync_block(&rpc, &burn_block_hash, &params)
         .expect("final sync");
 }

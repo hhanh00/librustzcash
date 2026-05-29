@@ -32,6 +32,9 @@ pub mod combiner;
 #[cfg(feature = "spend-finalizer")]
 pub mod spend_finalizer;
 
+#[cfg(all(zcash_unstable = "nu7", feature = "issuer"))]
+pub mod issuer;
+
 #[cfg(feature = "tx-extractor")]
 pub mod tx_extractor;
 

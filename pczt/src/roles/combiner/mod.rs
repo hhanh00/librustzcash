@@ -49,11 +49,14 @@ fn merge(lhs: Pczt, rhs: Pczt) -> Result<Pczt, Error> {
     // Now that the per-protocol bundles are merged, merge the globals.
     let global = lhs.global.merge(rhs.global).ok_or(Error::DataMismatch)?;
 
+    let issue = lhs.issue.merge(&rhs.issue);
+
     Ok(Pczt {
         global,
         transparent,
         sapling,
         orchard,
+        issue,
     })
 }
 

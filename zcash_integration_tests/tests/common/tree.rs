@@ -7,11 +7,11 @@ use orchard::{
     Anchor,
 };
 use zcash_primitives::transaction::Transaction;
-use zcash_protocol::consensus::{BranchId, Parameters, TEST_NETWORK};
+use zcash_protocol::consensus::{BranchId, Parameters};
 
 use super::rpc::RpcClient;
 
-/// Tracks the Orchard note commitment tree by syncing from actual blocks.
+/// Tracks the Orchard note commitment tree by syncing from mined blocks.
 pub struct OrchardTreeState {
     tree: BridgeTree<MerkleHashOrchard, usize, 32>,
     leaf_count: usize,
@@ -33,6 +33,9 @@ impl OrchardTreeState {
 
     /// Returns the current anchor (root of the tree). If the tree is empty,
     /// returns [`Anchor::empty_tree`].
+    ///
+    /// Uses `root(0)` which returns the current (uncommitted) tree state root.
+    /// Per BridgeTree docs, no checkpoints are required for `root(0)`.
     pub fn anchor(&self) -> Anchor {
         if self.leaf_count == 0 {
             Anchor::empty_tree()
@@ -47,6 +50,9 @@ impl OrchardTreeState {
     /// Returns a Merkle path for the leaf at the given 0-based index.
     ///
     /// Panics if the index is out of bounds or the tree is empty.
+    ///
+    /// Uses `witness(pos, 0)` which returns the witness against the current
+    /// tree state. Per BridgeTree docs, no checkpoints are required.
     pub fn witness(&self, index: usize) -> orchard::tree::MerklePath {
         let pos: u64 = index as u64;
         orchard::tree::MerklePath::from_parts(
@@ -66,7 +72,7 @@ impl OrchardTreeState {
     /// local tree matches the chain regardless of what other transactions are in the
     /// block.
     #[allow(unused)]
-    pub fn sync_block(&mut self, rpc: &RpcClient, block_hash: &str) -> Result<SyncResult, String> {
+    pub fn sync_block(&mut self, rpc: &RpcClient, block_hash: &str, params: &impl Parameters) -> Result<SyncResult, String> {
         let block: serde_json::Value = rpc.get_block(block_hash)?;
 
         let height: u32 = block
@@ -78,7 +84,8 @@ impl OrchardTreeState {
             .and_then(|t| t.as_array())
             .ok_or("block missing tx array")?;
 
-        let branch = BranchId::for_height(&TEST_NETWORK, height.into());
+        // Use the params passed by the caller instead of TEST_NETWORK
+        let branch = BranchId::for_height(params, height.into());
         let count_before = self.leaf_count;
         let mut total_commitments: usize = 0;
 
@@ -97,17 +104,24 @@ impl OrchardTreeState {
                 for action in zsa.actions() {
                     let cmx = action.cmx();
                     let leaf = MerkleHashOrchard::from_cmx(cmx);
-                    self.tree
-                        .append(leaf);
+                    self.tree.append(leaf);
+                    self.tree.mark();
+                    self.leaf_count += 1;
+                    total_commitments += 1;
+                }
+            }
+            #[cfg(zcash_unstable = "nu7")]
+            if let Some(ib) = tx.issue_bundle() {
+                for note in ib.actions().iter().flat_map(|a| a.notes()) {
+                    let cmx = orchard::note::ExtractedNoteCommitment::from(note.commitment());
+                    let leaf = MerkleHashOrchard::from_cmx(&cmx);
+                    self.tree.append(leaf);
                     self.tree.mark();
                     self.leaf_count += 1;
                     total_commitments += 1;
                 }
             }
         }
-
-        self.tree
-            .checkpoint(height as usize);
 
         Ok(SyncResult {
             height,

@@ -96,7 +96,9 @@ impl Creator {
                 anchor: self.orchard_anchor,
                 zkproof: None,
                 bsk: None,
+                burn: vec![],
             },
+            issue: crate::issue::Bundle::default(),
         }
     }
 
@@ -177,7 +179,9 @@ impl Creator {
                     anchor: orchard::Anchor::empty_tree().to_bytes(),
                     zkproof: None,
                     bsk: None,
+                    burn: vec![],
                 }),
+            issue: crate::issue::Bundle::default(),
         })
     }
 }

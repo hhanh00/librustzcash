@@ -60,7 +60,17 @@ impl Signer {
                     .map_err(ExtractError::TransparentExtract)
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
-            |o| o.extract_effects().map_err(ExtractError::OrchardExtract),
+            |o| {
+                if o.flags().zsa_enabled() {
+                    o.extract_effects_zsa()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA))
+                        .map_err(ExtractError::OrchardExtract)
+                } else {
+                    o.extract_effects()
+                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
+                        .map_err(ExtractError::OrchardExtract)
+                }
+            },
         )?;
         let txid_parts = tx_data.digest(TxIdDigester);
         let shielded_sighash = sighash(&tx_data, &SignableInput::Shielded, &txid_parts);
@@ -337,6 +347,7 @@ impl Signer {
             transparent: crate::transparent::Bundle::serialize_from(self.transparent),
             sapling: crate::sapling::Bundle::serialize_from(self.sapling),
             orchard: crate::orchard::Bundle::serialize_from(self.orchard),
+            issue: crate::issue::Bundle::default(),
         }
     }
 }

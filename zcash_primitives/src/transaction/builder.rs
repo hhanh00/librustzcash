@@ -31,6 +31,9 @@ use crate::transaction::{
 #[cfg(feature = "std")]
 use std::sync::mpsc::Sender;
 
+#[cfg(all(zcash_unstable = "nu7", not(feature = "circuits")))]
+use crate::transaction::OrchardBundle;
+
 #[cfg(feature = "circuits")]
 use {
     crate::transaction::{
@@ -381,6 +384,11 @@ pub struct PcztParts<P: Parameters> {
     pub transparent: Option<transparent::pczt::Bundle>,
     pub sapling: Option<sapling::pczt::Bundle>,
     pub orchard: Option<orchard::pczt::Bundle>,
+    /// The ZSA builder (ZSA only), carrying issuance state through to the
+    /// PCZT Issuer role. The Issuer role will build and sign the issue bundle
+    /// after the first orchard nullifier becomes available.
+    #[cfg(zcash_unstable = "nu7")]
+    pub zsa_builder: Option<ZsaBuilder>,
 }
 
 /// Generates a [`Transaction`] from its inputs and outputs.
@@ -1536,6 +1544,8 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                 transparent: transparent_bundle,
                 sapling: sapling_bundle,
                 orchard: orchard_bundle,
+                #[cfg(zcash_unstable = "nu7")]
+                zsa_builder: self.zsa_builder,
             },
             sapling_meta,
             orchard_meta,

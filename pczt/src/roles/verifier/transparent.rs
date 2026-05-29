@@ -6,11 +6,13 @@ impl super::Verifier {
     where
         F: FnOnce(&transparent::pczt::Bundle) -> Result<(), TransparentError<E>>,
     {
+        let issue = self.pczt.issue().clone();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let bundle = transparent
@@ -25,6 +27,7 @@ impl super::Verifier {
                 transparent: crate::transparent::Bundle::serialize_from(bundle),
                 sapling,
                 orchard,
+                issue,
             },
         })
     }

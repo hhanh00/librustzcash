@@ -8,11 +8,13 @@ impl super::Updater {
     where
         F: FnOnce(Updater<'_>) -> Result<(), UpdaterError>,
     {
+        let issue = self.pczt.issue().clone();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let mut bundle = transparent
@@ -27,6 +29,7 @@ impl super::Updater {
                 transparent: crate::transparent::Bundle::serialize_from(bundle),
                 sapling,
                 orchard,
+                issue,
             },
         })
     }
