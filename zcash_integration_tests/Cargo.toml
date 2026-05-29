@@ -1,0 +1,52 @@
+[package]
+name = "zcash_integration_tests"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "Integration tests for Zcash that require a running zebra/zcashd node"
+publish = false
+
+[dev-dependencies]
+zcash_primitives = { workspace = true, features = [
+    "circuits",
+    "std",
+    "test-dependencies",
+    "transparent-inputs",
+    "zsa-issuance",
+    "zip-233",
+] }
+zcash_protocol = { workspace = true, features = ["local-consensus"] }
+zcash_proofs = { workspace = true, features = ["bundled-prover"] }
+
+orchard = { workspace = true, features = ["zsa-issuance", "circuit", "test-dependencies"] }
+sapling = { workspace = true, features = ["circuit", "test-dependencies"] }
+transparent.workspace = true
+
+ureq = { version = "2", features = ["json"] }
+hex.workspace = true
+serde_json.workspace = true
+serde = { workspace = true, features = ["derive"] }
+rand_core.workspace = true
+nonempty.workspace = true
+bridgetree = "0.7"
+incrementalmerkletree = { workspace = true, features = ["legacy-api"] }
+zcash_note_encryption.workspace = true
+zcash_address.workspace = true
+zip32.workspace = true
+secrecy.workspace = true
+secp256k1 = { workspace = true, features = ["rand"] }
+bs58.workspace = true
+
+[features]
+integration-tests = []
+
+[[test]]
+name = "issuance_mining"
+required-features = ["integration-tests"]
+
+[[test]]
+name = "transfer_burn"
+required-features = ["integration-tests"]
+
+[lints]
+workspace = true

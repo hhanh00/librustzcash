@@ -237,6 +237,9 @@ impl Authorization for TestUnauthorized {
 }
 
 mod orchard_zsa_digests;
+
+#[cfg(all(test, zcash_unstable = "nu7"))]
+mod zsa;
 #[test]
 fn zip_0244() {
     fn to_test_txdata(
