@@ -169,6 +169,14 @@ pub struct Spend {
     /// - This is required by the Prover.
     pub(crate) rseed: Option<[u8; 32]>,
 
+    /// The split note seed randomness, if this is a split spend (ZIP-226).
+    #[serde(default)]
+    pub(crate) rseed_split_note: Option<[u8; 32]>,
+
+    /// Whether this spend is a split spend.
+    #[serde(default)]
+    pub(crate) split_flag: bool,
+
     /// The full viewing key that received the note being spent.
     ///
     /// - This is set by the Updater.
@@ -384,6 +392,8 @@ impl Bundle {
                         asset: spend_asset,
                         rho,
                         rseed,
+                        rseed_split_note,
+                        split_flag,
                         fvk,
                         witness,
                         alpha,
@@ -427,6 +437,8 @@ impl Bundle {
                 && merge_optional(&mut lhs.spend.asset, spend_asset)
                 && merge_optional(&mut lhs.spend.rho, rho)
                 && merge_optional(&mut lhs.spend.rseed, rseed)
+                && merge_optional(&mut lhs.spend.rseed_split_note, rseed_split_note)
+                && lhs.spend.split_flag == split_flag
                 && merge_optional(&mut lhs.spend.fvk, fvk)
                 && merge_optional(&mut lhs.spend.witness, witness)
                 && merge_optional(&mut lhs.spend.alpha, alpha)
@@ -471,6 +483,8 @@ impl Bundle {
                     action.spend.asset,
                     action.spend.rho,
                     action.spend.rseed,
+                    action.spend.rseed_split_note,
+                    action.spend.split_flag,
                     action.spend.fvk,
                     action.spend.witness,
                     action.spend.alpha,
@@ -556,6 +570,10 @@ impl Bundle {
                         asset: spend.asset().map(|a| a.to_bytes()),
                         rho: spend.rho().map(|rho| rho.to_bytes()),
                         rseed: spend.rseed().map(|rseed| *rseed.as_bytes()),
+                        rseed_split_note: spend
+                            .rseed_split_note()
+                            .map(|rsn| *rsn.as_bytes()),
+                        split_flag: *spend.split_flag(),
                         fvk: spend.fvk().as_ref().map(|fvk| fvk.to_bytes()),
                         witness: spend.witness().as_ref().map(|witness| {
                             (
