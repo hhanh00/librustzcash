@@ -69,6 +69,9 @@ impl TransactionEntry {
         }
     }
 
+    // Kept for consumers that need the original transaction index; may be unused
+    // depending on feature flags. Silence dead_code warning while retaining API.
+    #[allow(dead_code)]
     pub(crate) fn tx_index(&self) -> Option<u32> {
         self.tx_index
     }
