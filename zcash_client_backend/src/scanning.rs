@@ -26,7 +26,10 @@ use crate::{
 };
 
 #[cfg(feature = "orchard")]
-use orchard::note_encryption::OrchardDomain;
+use orchard::{flavor::OrchardVanilla, primitives::OrchardDomain as GenericOrchardDomain};
+
+#[cfg(feature = "orchard")]
+type OrchardDomain = GenericOrchardDomain<OrchardVanilla>;
 
 pub(crate) mod compact;
 

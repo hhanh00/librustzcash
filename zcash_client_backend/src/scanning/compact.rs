@@ -24,12 +24,18 @@ use crate::{
 
 #[cfg(feature = "orchard")]
 use orchard::{
-    note_encryption::{CompactAction, OrchardDomain},
+    flavor::OrchardVanilla,
+    primitives::{CompactAction as GenericCompactAction, OrchardDomain as GenericOrchardDomain},
     tree::MerkleHashOrchard,
 };
 
 #[cfg(not(feature = "orchard"))]
 use std::marker::PhantomData;
+
+#[cfg(feature = "orchard")]
+type OrchardDomain = GenericOrchardDomain<OrchardVanilla>;
+#[cfg(feature = "orchard")]
+type CompactAction = GenericCompactAction<OrchardVanilla>;
 
 type TaggedSaplingBatch<IvkTag> = Batch<
     IvkTag,
@@ -46,16 +52,10 @@ type TaggedSaplingBatchRunner<IvkTag, Tasks> = BatchRunner<
 >;
 
 #[cfg(feature = "orchard")]
-type TaggedOrchardBatch<IvkTag> =
-    Batch<IvkTag, OrchardDomain, orchard::note_encryption::CompactAction, CompactDecryptor>;
+type TaggedOrchardBatch<IvkTag> = Batch<IvkTag, OrchardDomain, CompactAction, CompactDecryptor>;
 #[cfg(feature = "orchard")]
-type TaggedOrchardBatchRunner<IvkTag, Tasks> = BatchRunner<
-    IvkTag,
-    OrchardDomain,
-    orchard::note_encryption::CompactAction,
-    CompactDecryptor,
-    Tasks,
->;
+type TaggedOrchardBatchRunner<IvkTag, Tasks> =
+    BatchRunner<IvkTag, OrchardDomain, CompactAction, CompactDecryptor, Tasks>;
 
 pub(crate) trait SaplingTasks<IvkTag>: Tasks<TaggedSaplingBatch<IvkTag>> {}
 impl<IvkTag, T: Tasks<TaggedSaplingBatch<IvkTag>>> SaplingTasks<IvkTag> for T {}

@@ -36,8 +36,12 @@ use transparent::bundle::OutPoint;
 
 #[cfg(feature = "orchard")]
 use {
-    orchard::{flavor::OrchardVanilla, primitives::OrchardPrimitives, tree::MerkleHashOrchard},
-    zcash_note_encryption::note_bytes::{NoteBytes, NoteBytesData},
+    orchard::{
+        flavor::OrchardVanilla,
+        primitives::{CompactAction as OrchardCompactAction, OrchardPrimitives},
+        tree::MerkleHashOrchard,
+    },
+    zcash_note_encryption::note_bytes::NoteBytes,
 };
 
 #[rustfmt::skip]
@@ -210,17 +214,23 @@ impl compact_formats::CompactSaplingSpend {
 }
 
 #[cfg(feature = "orchard")]
-impl TryFrom<&compact_formats::CompactOrchardAction> for orchard::note_encryption::CompactAction {
+impl TryFrom<&compact_formats::CompactOrchardAction> for OrchardCompactAction<OrchardVanilla> {
     type Error = CompactFormatError;
 
     fn try_from(value: &compact_formats::CompactOrchardAction) -> Result<Self, Self::Error> {
-        Ok(orchard::note_encryption::CompactAction::from_parts(
+        let enc_ciphertext: [u8; <OrchardVanilla as OrchardPrimitives>::COMPACT_NOTE_SIZE] = value
+            .ciphertext[..]
+            .try_into()
+            .map_err(CompactFormatError::InvalidLength)?;
+
+        Ok(OrchardCompactAction::from_parts(
             value.nf()?,
             value.cmx()?,
             value.ephemeral_key()?,
-            value.ciphertext[..]
-                .try_into()
-                .map_err(CompactFormatError::InvalidLength)?,
+            <OrchardVanilla as OrchardPrimitives>::CompactNoteCiphertextBytes::from_slice(
+                &enc_ciphertext,
+            )
+            .expect("the compact ciphertext length has been checked"),
         ))
     }
 }

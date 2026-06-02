@@ -46,6 +46,9 @@ use {
 #[cfg(feature = "orchard")]
 use {crate::data_api::ORCHARD_SHARD_HEIGHT, shardtree::store::Checkpoint};
 
+#[cfg(feature = "orchard")]
+use zcash_primitives::transaction::OrchardBundle;
+
 /// The maximum number of blocks the wallet is allowed to rewind. This is
 /// consistent with the bound in zcashd, and allows block data deeper than
 /// this delta from the chain tip to be pruned.
@@ -672,6 +675,22 @@ where
         wallet_db.set_transaction_status(d_tx.tx().txid(), TransactionStatus::Mined(height))?;
     }
 
+    #[cfg(feature = "orchard")]
+    let orchard_nfs = match d_tx.tx().orchard_bundle() {
+        Some(OrchardBundle::OrchardVanilla(b)) => b
+            .actions()
+            .iter()
+            .map(|action| action.nullifier())
+            .collect::<Vec<_>>(),
+        #[cfg(zcash_unstable = "nu7")]
+        Some(OrchardBundle::OrchardZSA(b)) => b
+            .actions()
+            .iter()
+            .map(|action| action.nullifier())
+            .collect::<Vec<_>>(),
+        None => vec![],
+    };
+
     mark_notes_spent(
         wallet_db,
         tx_ref,
@@ -687,11 +706,7 @@ where
             .flat_map(|b| b.shielded_spends().iter())
             .map(|spend| spend.nullifier()),
         #[cfg(feature = "orchard")]
-        d_tx.tx()
-            .orchard_bundle()
-            .iter()
-            .flat_map(|b| b.actions().iter())
-            .map(|action| action.nullifier()),
+        orchard_nfs.into_iter(),
     )?;
 
     // A flag used to determine whether it is necessary to query for transactions that

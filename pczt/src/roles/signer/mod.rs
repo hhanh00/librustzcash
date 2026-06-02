@@ -17,7 +17,7 @@ use blake2b_simd::Hash as Blake2bHash;
 use orchard::primitives::redpallas;
 use rand_core::OsRng;
 
-use ::transparent::sighash::{SIGHASH_ANYONECANPAY, SIGHASH_NONE, SIGHASH_SINGLE};
+use transparent::sighash::{SIGHASH_ANYONECANPAY, SIGHASH_NONE, SIGHASH_SINGLE};
 use zcash_primitives::transaction::{
     TransactionData, TxDigests, sighash::SignableInput, txid::TxIdDigester,
 };
@@ -66,15 +66,20 @@ impl Signer {
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
             |o| {
+                #[cfg(zcash_unstable = "nu7")]
                 if o.flags().zsa_enabled() {
-                    o.extract_effects_zsa()
-                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA))
-                        .map_err(ExtractError::OrchardExtract)
-                } else {
-                    o.extract_effects()
-                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
-                        .map_err(ExtractError::OrchardExtract)
+                    return o
+                        .extract_effects_zsa()
+                        .map(|opt| {
+                            opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA)
+                        })
+                        .map_err(ExtractError::OrchardExtract);
                 }
+                o.extract_effects()
+                    .map(|opt| {
+                        opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla)
+                    })
+                    .map_err(ExtractError::OrchardExtract)
             },
             #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
             |i| Ok(i.to_awaiting_sighash()),

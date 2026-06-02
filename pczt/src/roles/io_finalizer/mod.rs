@@ -58,15 +58,20 @@ impl IoFinalizer {
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
             |o| {
+                #[cfg(zcash_unstable = "nu7")]
                 if o.flags().zsa_enabled() {
-                    o.extract_effects_zsa()
-                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA))
-                        .map_err(ExtractError::OrchardExtract)
-                } else {
-                    o.extract_effects()
-                        .map(|opt| opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla))
-                        .map_err(ExtractError::OrchardExtract)
+                    return o
+                        .extract_effects_zsa()
+                        .map(|opt| {
+                            opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA)
+                        })
+                        .map_err(ExtractError::OrchardExtract);
                 }
+                o.extract_effects()
+                    .map(|opt| {
+                        opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla)
+                    })
+                    .map_err(ExtractError::OrchardExtract)
             },
             #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
             |i| Ok(i.to_awaiting_sighash()),

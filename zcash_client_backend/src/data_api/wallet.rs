@@ -2153,7 +2153,7 @@ where
                             .expect("spending key derivation should not fail");
 
                         input_updater.set_bip32_derivation(
-                            pubkey.serialize(),
+                            pubkey.serialize().to_vec(),
                             Bip32Derivation::parse(
                                 derivation.seed_fingerprint().to_bytes(),
                                 vec![
