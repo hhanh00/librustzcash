@@ -222,6 +222,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Nu5 => BranchId::Nu5,
             NetworkUpgrade::Nu6 => BranchId::Nu6,
             NetworkUpgrade::Nu6_1 => BranchId::Nu6_1,
+            NetworkUpgrade::Nu6_2 => BranchId::Nu6_2,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -239,6 +240,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Nu5 => Some(BlockHeight(1_687_104)),
             NetworkUpgrade::Nu6 => Some(BlockHeight(2_726_400)),
             NetworkUpgrade::Nu6_1 => Some(BlockHeight(3_146_400)),
+            NetworkUpgrade::Nu6_2 => Some(BlockHeight(3_364_600)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -294,6 +296,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Nu5 => BranchId::Nu5,
             NetworkUpgrade::Nu6 => BranchId::Nu6,
             NetworkUpgrade::Nu6_1 => BranchId::Nu6_1,
+            NetworkUpgrade::Nu6_2 => BranchId::Nu6_2,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -311,6 +314,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Nu5 => Some(BlockHeight(1_842_420)),
             NetworkUpgrade::Nu6 => Some(BlockHeight(2_976_000)),
             NetworkUpgrade::Nu6_1 => Some(BlockHeight(3_536_500)),
+            NetworkUpgrade::Nu6_2 => Some(BlockHeight(4_052_000)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -364,6 +368,7 @@ impl Parameters for RegtestNetwork {
             NetworkUpgrade::Nu5 => BranchId::Nu5,
             NetworkUpgrade::Nu6 => BranchId::Nu6,
             NetworkUpgrade::Nu6_1 => BranchId::Nu6_1,
+            NetworkUpgrade::Nu6_2 => BranchId::Nu6_2,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => BranchId::ZFuture,
             _ => unreachable!()
@@ -381,6 +386,7 @@ impl Parameters for RegtestNetwork {
             NetworkUpgrade::Nu5 => Some(BlockHeight(1)),
             NetworkUpgrade::Nu6 => Some(BlockHeight(1)),
             NetworkUpgrade::Nu6_1 => Some(BlockHeight(1)),
+            NetworkUpgrade::Nu6_2 => Some(BlockHeight(1)),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -583,6 +589,10 @@ pub enum NetworkUpgrade {
     ///
     /// [Nu6]: https://z.cash/upgrade/nu6-1/
     Nu6_1,
+    /// The [Nu6.2] network upgrade.
+    ///
+    /// [Nu6.2]: https://z.cash/upgrade/nu6-2/
+    Nu6_2,
 
     /// The ZFUTURE network upgrade.
     ///
@@ -607,6 +617,7 @@ impl fmt::Display for NetworkUpgrade {
             NetworkUpgrade::Nu5 => write!(f, "Nu5"),
             NetworkUpgrade::Nu6 => write!(f, "Nu6"),
             NetworkUpgrade::Nu6_1 => write!(f, "Nu6.1"),
+            NetworkUpgrade::Nu6_2 => write!(f, "Nu6.2"),
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => write!(f, "ZFUTURE"),
         }
@@ -622,6 +633,7 @@ const ZCASH_UPGRADES_IN_ORDER: &[NetworkUpgrade] = &[
     NetworkUpgrade::Nu5,
     NetworkUpgrade::Nu6,
     NetworkUpgrade::Nu6_1,
+    NetworkUpgrade::Nu6_2,
 ];
 
 impl NetworkUpgrade {
@@ -685,6 +697,8 @@ pub enum BranchId {
     Nu6,
     /// The consensus rules deployed by [`NetworkUpgrade::Nu6_1`].
     Nu6_1,
+    /// The consensus rules deployed by [`NetworkUpgrade::Nu6_2`].
+    Nu6_2,
     /// Candidates for future consensus rules; this branch will never
     /// activate on mainnet.
     #[cfg(feature = "zfuture")]
@@ -711,6 +725,7 @@ impl TryFrom<u32> for BranchId {
             0xc2d6_d0b4 => Ok(BranchId::Nu5),
             0xc8e7_1055 => Ok(BranchId::Nu6),
             0x4dec_4df0 => Ok(BranchId::Nu6_1),
+            0x5437_f330 => Ok(BranchId::Nu6_2),
             #[cfg(feature = "zfuture")]
             0xffff_ffff => Ok(BranchId::ZFuture),
             _ => Err("Unknown consensus branch ID"),
@@ -734,6 +749,7 @@ impl From<BranchId> for u32 {
             BranchId::Nu5 => 0xc2d6_d0b4,
             BranchId::Nu6 => 0xc8e7_1055,
             BranchId::Nu6_1 => 0x4dec_4df0,
+            BranchId::Nu6_2 => 0x5437_f330,
             #[cfg(feature = "zfuture")]
             BranchId::ZFuture => 0xffff_ffff,
         }

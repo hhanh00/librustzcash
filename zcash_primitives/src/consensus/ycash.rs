@@ -40,6 +40,7 @@ impl Parameters for MainNetwork {
             NetworkUpgrade::Nu5 => None,
             NetworkUpgrade::Nu6 => None,
             NetworkUpgrade::Nu6_1 => None,
+            NetworkUpgrade::Nu6_2 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
@@ -105,6 +106,7 @@ impl Parameters for TestNetwork {
             NetworkUpgrade::Nu5 => None,
             NetworkUpgrade::Nu6 => None,
             NetworkUpgrade::Nu6_1 => None,
+            NetworkUpgrade::Nu6_2 => None,
             #[cfg(feature = "zfuture")]
             NetworkUpgrade::ZFuture => None,
         }
