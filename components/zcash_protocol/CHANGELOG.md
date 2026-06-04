@@ -10,10 +10,28 @@ workspace.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-02
+
+### Changed
+- This release sets the NU6.2 network activation height to 
+  3364600 on mainnet and 4052000 on testnet.
+- `zcash_protocol::consensus`:
+  - `BranchId` now has an additional `Nu6_2` variant.
+  - `NetworkUpgrade` now has an additional `Nu6_2` variant.
+- `zcash_protocol::local_consensus`:
+  - `LocalNetwork` has a new field `nu6_2`.
+
+## [0.8.0] - 2026-04-23
+
 ### Added
 - `zcash_protocol::consensus::TxIndex`
 - `zcash_protocol::consensus::COINBASE_MATURITY_BLOCKS`
 - `zcash_protocol::consensus::BranchId::{has_sprout, has_sapling, has_orchard}`
+
+### Changed
+- MSRV is now 1.85.1
+- Migrated to `zcash_encoding 0.4`
+- Migrated from the yanked `core2` crate to `corez 0.1.1`.
 
 ## [0.7.2] - 2025-12-10
 
