@@ -237,3 +237,6 @@ orchard = { path = "../orchard" }
 sinsemilla = { git = "https://github.com/zcash/sinsemilla", rev = "aabb707e862bc3d7b803c77d14e5a771bcee3e8c" }
 zcash_note_encryption = { path = "../zcash_note_encryption" }
 zcash_spec = { git = "https://github.com/QED-it/zcash_spec", rev = "d5e84264d2ad0646b587a837f4e2424ca64d3a05" }
+halo2_gadgets = { path = "../halo2/halo2_gadgets" }
+halo2_proofs = { path = "../halo2/halo2_proofs" }
+halo2_poseidon = { path = "../halo2/halo2_poseidon" }
