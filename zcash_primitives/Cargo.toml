@@ -77,6 +77,7 @@ workspace = true
 features = ["pre-zip-212"]
 
 [dev-dependencies]
+rand.workspace = true
 chacha20poly1305 = "0.10"
 criterion.workspace = true
 incrementalmerkletree = { workspace = true, features = ["legacy-api", "test-dependencies"] }

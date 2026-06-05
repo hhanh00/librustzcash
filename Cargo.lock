@@ -7320,6 +7320,7 @@ dependencies = [
  "orchard",
  "pprof",
  "proptest",
+ "rand 0.8.5",
  "rand_core 0.6.4",
  "rand_xorshift",
  "redjubjub",

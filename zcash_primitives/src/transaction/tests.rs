@@ -243,7 +243,7 @@ fn zip_0244() {
         tv: &self::data::zip_0244::TestVector,
     ) -> (TransactionData<TestUnauthorized>, TxDigests<Blake2bHash>) {
         let tx = Transaction::read(
-            tv.tx,
+            tv.tx.as_slice(),
             #[cfg(not(zcash_unstable = "nu7"))]
             BranchId::Nu5,
             #[cfg(zcash_unstable = "nu7")]
@@ -410,7 +410,7 @@ fn zip_0244() {
         );
     }
 
-    for tv in self::data::zip_0244::TEST_VECTORS {
+    for tv in &self::data::zip_0244::make_test_vectors() {
         perform_digest_tests(tv);
     }
 
