@@ -64,7 +64,7 @@ impl MapAuth<Authorized, Authorized> for () {
 /// Reads an [`orchard::Bundle`] from a v5 transaction format.
 pub fn read_v5_bundle<R: Read>(
     mut reader: R,
-    _proof_size_enforcement: ProofSizeEnforcement,
+    proof_size_enforcement: ProofSizeEnforcement,
 ) -> io::Result<Option<orchard::Bundle<Authorized, ZatBalance, OrchardVanilla>>> {
     #[allow(clippy::redundant_closure)]
     let actions_without_auth = Vector::read(&mut reader, |r| read_action_without_auth(r))?;
