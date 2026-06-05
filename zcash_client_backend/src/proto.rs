@@ -10,8 +10,8 @@ use std::{
 };
 use zcash_address::unified::{self, Encoding};
 
-use sapling::{self, Node, note::ExtractedNoteCommitment};
-use zcash_note_encryption::{COMPACT_NOTE_SIZE, EphemeralKeyBytes};
+use sapling::{self, Node, note::ExtractedNoteCommitment, note_encryption::COMPACT_NOTE_SIZE};
+use zcash_note_encryption::EphemeralKeyBytes;
 use zcash_primitives::{
     block::{BlockHash, BlockHeader},
     merkle_tree::read_commitment_tree,
@@ -35,7 +35,10 @@ use crate::{
 use transparent::bundle::OutPoint;
 
 #[cfg(feature = "orchard")]
-use orchard::tree::MerkleHashOrchard;
+use {
+    orchard::{flavor::OrchardVanilla, primitives::OrchardPrimitives, tree::MerkleHashOrchard},
+    zcash_note_encryption::note_bytes::{NoteBytes, NoteBytesData},
+};
 
 #[rustfmt::skip]
 #[allow(unknown_lints)]
@@ -115,45 +118,24 @@ impl compact_formats::CompactTx {
     }
 }
 
-/// An error indicating that a field of a compact format structure could not be parsed.
-#[derive(Clone, Debug)]
-pub enum CompactFormatError {
-    /// A byte slice had an invalid length for the expected field.
-    InvalidLength(TryFromSliceError),
-    /// A field value did not represent a valid protocol element.
-    InvalidValue,
-}
-
-impl Display for CompactFormatError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CompactFormatError::InvalidLength(e) => write!(f, "Invalid compact format field: {e}"),
-            CompactFormatError::InvalidValue => {
-                write!(f, "Compact format field is not a valid protocol element")
-            }
-        }
-    }
-}
-
 impl compact_formats::CompactSaplingOutput {
     /// Returns the note commitment for this output.
     ///
     /// A convenience method that parses [`field@Self::cmu`].
-    pub fn cmu(&self) -> Result<ExtractedNoteCommitment, CompactFormatError> {
+    pub fn cmu(&self) -> Result<ExtractedNoteCommitment, ()> {
         let mut repr = [0; 32];
         repr.copy_from_slice(&self.cmu[..]);
-        Option::from(ExtractedNoteCommitment::from_bytes(&repr))
-            .ok_or(CompactFormatError::InvalidValue)
+        Option::from(ExtractedNoteCommitment::from_bytes(&repr)).ok_or(())
     }
 
     /// Returns the ephemeral public key for this output.
     ///
     /// A convenience method that parses [`field@Self::ephemeral_key`].
-    pub fn ephemeral_key(&self) -> Result<EphemeralKeyBytes, CompactFormatError> {
+    pub fn ephemeral_key(&self) -> Result<EphemeralKeyBytes, ()> {
         self.ephemeral_key[..]
             .try_into()
             .map(EphemeralKeyBytes)
-            .map_err(CompactFormatError::InvalidLength)
+            .map_err(|_| ())
     }
 }
 
@@ -166,7 +148,7 @@ impl<Proof> From<&sapling::bundle::OutputDescription<Proof>>
         compact_formats::CompactSaplingOutput {
             cmu: out.cmu().to_bytes().to_vec(),
             ephemeral_key: out.ephemeral_key().as_ref().to_vec(),
-            ciphertext: out.enc_ciphertext()[..COMPACT_NOTE_SIZE].to_vec(),
+            ciphertext: out.enc_ciphertext().0[..COMPACT_NOTE_SIZE].to_vec(),
         }
     }
 }
@@ -174,7 +156,7 @@ impl<Proof> From<&sapling::bundle::OutputDescription<Proof>>
 impl TryFrom<compact_formats::CompactSaplingOutput>
     for sapling::note_encryption::CompactOutputDescription
 {
-    type Error = CompactFormatError;
+    type Error = ();
 
     fn try_from(value: compact_formats::CompactSaplingOutput) -> Result<Self, Self::Error> {
         (&value).try_into()
@@ -184,15 +166,13 @@ impl TryFrom<compact_formats::CompactSaplingOutput>
 impl TryFrom<&compact_formats::CompactSaplingOutput>
     for sapling::note_encryption::CompactOutputDescription
 {
-    type Error = CompactFormatError;
+    type Error = ();
 
     fn try_from(value: &compact_formats::CompactSaplingOutput) -> Result<Self, Self::Error> {
         Ok(sapling::note_encryption::CompactOutputDescription {
             cmu: value.cmu()?,
             ephemeral_key: value.ephemeral_key()?,
-            enc_ciphertext: value.ciphertext[..]
-                .try_into()
-                .map_err(CompactFormatError::InvalidLength)?,
+            enc_ciphertext: value.ciphertext[..].try_into().map_err(|_| ())?,
         })
     }
 }
@@ -201,24 +181,26 @@ impl compact_formats::CompactSaplingSpend {
     /// Returns the nullifier for this spend.
     ///
     /// A convenience method that parses [`field@Self::nf`].
-    pub fn nf(&self) -> Result<sapling::Nullifier, CompactFormatError> {
-        sapling::Nullifier::from_slice(&self.nf).map_err(CompactFormatError::InvalidLength)
+    pub fn nf(&self) -> Result<sapling::Nullifier, ()> {
+        sapling::Nullifier::from_slice(&self.nf).map_err(|_| ())
     }
 }
 
 #[cfg(feature = "orchard")]
-impl TryFrom<&compact_formats::CompactOrchardAction> for orchard::note_encryption::CompactAction {
-    type Error = CompactFormatError;
+impl TryFrom<&compact_formats::CompactOrchardAction>
+    for orchard::primitives::CompactAction<OrchardVanilla>
+{
+    type Error = ();
 
     fn try_from(value: &compact_formats::CompactOrchardAction) -> Result<Self, Self::Error> {
-        Ok(orchard::note_encryption::CompactAction::from_parts(
-            value.nf()?,
-            value.cmx()?,
-            value.ephemeral_key()?,
-            value.ciphertext[..]
-                .try_into()
-                .map_err(CompactFormatError::InvalidLength)?,
-        ))
+        Ok(
+            orchard::primitives::CompactAction::<OrchardVanilla>::from_parts(
+                value.nf()?,
+                value.cmx()?,
+                value.ephemeral_key()?,
+                NoteBytesData::from_slice(&value.ciphertext).ok_or(())?,
+            ),
+        )
     }
 }
 
@@ -227,34 +209,29 @@ impl compact_formats::CompactOrchardAction {
     /// Returns the note commitment for the output of this action.
     ///
     /// A convenience method that parses [`field@Self::cmx`].
-    pub fn cmx(&self) -> Result<orchard::note::ExtractedNoteCommitment, CompactFormatError> {
+    pub fn cmx(&self) -> Result<orchard::note::ExtractedNoteCommitment, ()> {
         Option::from(orchard::note::ExtractedNoteCommitment::from_bytes(
-            &self.cmx[..]
-                .try_into()
-                .map_err(CompactFormatError::InvalidLength)?,
+            &self.cmx[..].try_into().map_err(|_| ())?,
         ))
-        .ok_or(CompactFormatError::InvalidValue)
+        .ok_or(())
     }
 
     /// Returns the nullifier for the spend of this action.
     ///
     /// A convenience method that parses [`field@Self::nullifier`].
-    pub fn nf(&self) -> Result<orchard::note::Nullifier, CompactFormatError> {
-        let nf_bytes: [u8; 32] = self.nullifier[..]
-            .try_into()
-            .map_err(CompactFormatError::InvalidLength)?;
-        Option::from(orchard::note::Nullifier::from_bytes(&nf_bytes))
-            .ok_or(CompactFormatError::InvalidValue)
+    pub fn nf(&self) -> Result<orchard::note::Nullifier, ()> {
+        let nf_bytes: [u8; 32] = self.nullifier[..].try_into().map_err(|_| ())?;
+        Option::from(orchard::note::Nullifier::from_bytes(&nf_bytes)).ok_or(())
     }
 
     /// Returns the ephemeral public key for the output of this action.
     ///
     /// A convenience method that parses [`field@Self::ephemeral_key`].
-    pub fn ephemeral_key(&self) -> Result<EphemeralKeyBytes, CompactFormatError> {
+    pub fn ephemeral_key(&self) -> Result<EphemeralKeyBytes, ()> {
         self.ephemeral_key[..]
             .try_into()
             .map(EphemeralKeyBytes)
-            .map_err(CompactFormatError::InvalidLength)
+            .map_err(|_| ())
     }
 }
 
@@ -269,13 +246,16 @@ impl<A: sapling::bundle::Authorization> From<&sapling::bundle::SpendDescription<
 }
 
 #[cfg(feature = "orchard")]
-impl<SpendAuth> From<&orchard::Action<SpendAuth>> for compact_formats::CompactOrchardAction {
-    fn from(action: &orchard::Action<SpendAuth>) -> compact_formats::CompactOrchardAction {
+impl<SpendAuth, D: OrchardPrimitives> From<&orchard::Action<SpendAuth, D>>
+    for compact_formats::CompactOrchardAction
+{
+    fn from(action: &orchard::Action<SpendAuth, D>) -> compact_formats::CompactOrchardAction {
         compact_formats::CompactOrchardAction {
             nullifier: action.nullifier().to_bytes().to_vec(),
             cmx: action.cmx().to_bytes().to_vec(),
             ephemeral_key: action.encrypted_note().epk_bytes.to_vec(),
-            ciphertext: action.encrypted_note().enc_ciphertext[..COMPACT_NOTE_SIZE].to_vec(),
+            ciphertext: action.encrypted_note().enc_ciphertext.as_ref()[..D::COMPACT_NOTE_SIZE]
+                .to_vec(),
         }
     }
 }

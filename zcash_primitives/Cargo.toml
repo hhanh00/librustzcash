@@ -1,7 +1,7 @@
 [package]
 name = "zcash_primitives"
 description = "Rust implementations of the Zcash primitives"
-version = "0.27.1"
+version = "0.28.0"
 authors = [
     "Jack Grigg <jack@z.cash>",
     "Kris Nuttycombe <kris@electriccoin.co>"
@@ -83,6 +83,7 @@ incrementalmerkletree = { workspace = true, features = ["legacy-api", "test-depe
 proptest.workspace = true
 assert_matches.workspace = true
 rand_xorshift.workspace = true
+shardtree.workspace = true
 transparent = { workspace = true, features = ["test-dependencies"] }
 sapling = { workspace = true, features = ["test-dependencies"] }
 orchard = { workspace = true, features = ["test-dependencies"] }
@@ -93,7 +94,7 @@ zip32.workspace = true
 pprof = { version = "0.15", features = ["criterion", "flamegraph"] }
 
 [features]
-default = ["multicore", "std", "circuits"]
+default = ["multicore", "std", "circuits", "zsa-issuance"]
 std = [
     "document-features",
     "redjubjub/std",
@@ -105,6 +106,9 @@ zip-233 = []
 
 ## Enables creating proofs
 circuits = ["orchard/circuit", "sapling/circuit"]
+
+## Enables ZSA issuance support in Orchard
+zsa-issuance = ["orchard/zsa-issuance"]
 
 ## Enables multithreading support for creating proofs.
 multicore = ["orchard/multicore", "sapling/multicore"]
