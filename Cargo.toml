@@ -233,7 +233,7 @@ unexpected_cfgs = { level = "warn", check-cfg = [
 # core2 0.3.x was yanked from crates.io (Apr 2026); patch to the archived git source
 core2 = { git = "https://github.com/bbqsrc/core2", rev = "7bf2611bd9a52b438300c640e142ad5c1298b05b" }
 sapling = { package = "sapling-crypto", git = "https://github.com/QED-it/sapling-crypto", rev = "59535fb5d34b5c5cf1b20ef18269f5c65228378c" }
-orchard = { git = "https://github.com/zcash-shielded-assets/orchard", rev = "79b7bfabbbe0aa230b1acb333e0f72d598ec8282" }
+orchard = { path = "../orchard" }
 sinsemilla = { git = "https://github.com/zcash/sinsemilla", rev = "aabb707e862bc3d7b803c77d14e5a771bcee3e8c" }
 zcash_note_encryption = { git = "https://github.com/zcash/zcash_note_encryption", rev = "9f7e93d42cef839d02b9d75918117941d453f8cb" }
 zcash_spec = { git = "https://github.com/QED-it/zcash_spec", rev = "d5e84264d2ad0646b587a837f4e2424ca64d3a05" }
