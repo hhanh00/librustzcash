@@ -6,11 +6,14 @@ impl super::Verifier {
     where
         F: FnOnce(&orchard::pczt::Bundle) -> Result<(), OrchardError<E>>,
     {
+        let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let bundle = orchard.into_parsed().map_err(OrchardError::Parse)?;
@@ -23,6 +26,8 @@ impl super::Verifier {
                 transparent,
                 sapling,
                 orchard: crate::orchard::Bundle::serialize_from(bundle),
+                issue,
+                shielded_sighash,
             },
         })
     }

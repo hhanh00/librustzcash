@@ -78,6 +78,7 @@ orchard = [
     "dep:nonempty",
     "dep:orchard",
     "dep:pasta_curves",
+    "orchard/zsa-issuance",
 ]
 
 ## Enables functionality that requires Sapling protocol types.
@@ -139,6 +140,14 @@ signer = [
 
 ## Enables the Spend Finalizer role.
 spend-finalizer = ["transparent"]
+
+## Enables the Issuer role for ZSA asset minting.
+issuer = [
+    "dep:rand_core",
+    "rand_core/getrandom",
+    "orchard/zsa-issuance",
+    "zcp-builder",
+]
 
 ## Enables the Transaction Extractor role.
 tx-extractor = [

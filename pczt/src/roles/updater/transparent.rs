@@ -8,11 +8,14 @@ impl super::Updater {
     where
         F: FnOnce(Updater<'_>) -> Result<(), UpdaterError>,
     {
+        let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let mut bundle = transparent
@@ -27,6 +30,8 @@ impl super::Updater {
                 transparent: crate::transparent::Bundle::serialize_from(bundle),
                 sapling,
                 orchard,
+                issue,
+                shielded_sighash,
             },
         })
     }

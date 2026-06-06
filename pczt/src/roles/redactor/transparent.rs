@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use crate::transparent::{Bundle, Input, Output};
 
 impl super::Redactor {
@@ -96,9 +98,11 @@ impl InputRedactor<'_> {
     }
 
     /// Redacts the signature for the given pubkey.
-    pub fn redact_partial_signature(&mut self, pubkey: [u8; 33]) {
+    pub fn redact_partial_signature(&mut self, pubkey: Vec<u8>) {
         self.redact(|input| {
-            input.partial_signatures.remove(&pubkey);
+            if let Ok(key) = <[u8; 33]>::try_from(pubkey.as_slice()) {
+                input.partial_signatures.remove(&key);
+            }
         });
     }
 
@@ -110,9 +114,11 @@ impl InputRedactor<'_> {
     }
 
     /// Redacts the BIP 32 derivation path for the given pubkey.
-    pub fn redact_bip32_derivation(&mut self, pubkey: [u8; 33]) {
+    pub fn redact_bip32_derivation(&mut self, pubkey: Vec<u8>) {
         self.redact(|input| {
-            input.bip32_derivation.remove(&pubkey);
+            if let Ok(key) = <[u8; 33]>::try_from(pubkey.as_slice()) {
+                input.bip32_derivation.remove(&key);
+            }
         });
     }
 
@@ -227,9 +233,11 @@ impl OutputRedactor<'_> {
     }
 
     /// Redacts the BIP 32 derivation path for the given pubkey.
-    pub fn redact_bip32_derivation(&mut self, pubkey: [u8; 33]) {
+    pub fn redact_bip32_derivation(&mut self, pubkey: Vec<u8>) {
         self.redact(|output| {
-            output.bip32_derivation.remove(&pubkey);
+            if let Ok(key) = <[u8; 33]>::try_from(pubkey.as_slice()) {
+                output.bip32_derivation.remove(&key);
+            }
         });
     }
 

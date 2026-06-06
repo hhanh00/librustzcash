@@ -40,6 +40,18 @@ use {
     zcash_protocol::constants::{V5_TX_VERSION, V5_VERSION_GROUP_ID},
 };
 
+#[cfg(all(
+    any(zcash_unstable = "nu7", zcash_unstable = "zfuture"),
+    feature = "zip-233",
+    any(feature = "io-finalizer", feature = "signer", feature = "tx-extractor")
+))]
+use zcash_protocol::constants::{V6_TX_VERSION, V6_VERSION_GROUP_ID};
+
+#[cfg(all(
+    any(feature = "io-finalizer", feature = "signer"),
+    zcash_unstable = "nu7"
+))]
+use zcash_primitives::transaction::sighash_v6::v6_signature_hash;
 #[cfg(any(feature = "io-finalizer", feature = "signer"))]
 use {
     blake2b_simd::Hash as Blake2bHash,
@@ -51,6 +63,7 @@ use {
 pub mod roles;
 
 pub mod common;
+pub mod issue;
 pub mod orchard;
 pub mod sapling;
 pub mod transparent;
@@ -79,9 +92,58 @@ pub struct Pczt {
     sapling: sapling::Bundle,
     #[getset(get = "pub")]
     orchard: orchard::Bundle,
+    #[getset(get = "pub")]
+    #[serde(default)]
+    issue: issue::Bundle,
+
+    /// The shielded sighash, computed and stored by the IoFinalizer.
+    /// Available after [`crate::roles::io_finalizer::IoFinalizer::finalize_io`]
+    /// for use by the Issuer role's sign phase.
+    #[getset(get = "pub")]
+    #[serde(skip, default)]
+    shielded_sighash: Option<[u8; 32]>,
 }
 
 impl Pczt {
+    /// Create a PCZT from parts.
+    pub fn from_parts(
+        global: common::Global,
+        transparent: transparent::Bundle,
+        sapling: sapling::Bundle,
+        orchard: orchard::Bundle,
+    ) -> Self {
+        Self {
+            global,
+            transparent,
+            sapling,
+            orchard,
+            issue: issue::Bundle::default(),
+            shielded_sighash: None,
+        }
+    }
+
+    /// Adds an issuance intent to this PCZT.
+    ///
+    /// The intent specifies what asset to issue, to whom, how much, and
+    /// whether this is the first issuance. The [`Issuer`] role reads these
+    /// intents and builds the actual issuance bundle.
+    ///
+    /// Returns an error if the issue bundle has already been built (i.e.
+    /// [`issue::Bundle::actions`] is non-empty).
+    ///
+    /// [`Issuer`]: crate::roles::issuer::Issuer
+    #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+    pub fn add_issue_intent(
+        mut self,
+        intent: crate::issue::IssueIntent,
+    ) -> Result<Self, &'static str> {
+        if !self.issue.actions.is_empty() {
+            return Err("Cannot add intents after the issue bundle has been built");
+        }
+        self.issue.intents.push(intent);
+        Ok(self)
+    }
+
     /// Parses a PCZT from its encoding.
     pub fn parse(bytes: &[u8]) -> Result<Self, ParseError> {
         if bytes.len() < 8 {
@@ -131,7 +193,14 @@ impl Pczt {
         extract_orchard: impl FnOnce(
             &::orchard::pczt::Bundle,
         ) -> Result<
-            Option<::orchard::Bundle<A::OrchardAuth, zcash_protocol::value::ZatBalance>>,
+            Option<zcash_primitives::transaction::OrchardBundle<A::OrchardAuth>>,
+            E,
+        >,
+        #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))] extract_issue: impl FnOnce(
+            &crate::issue::Bundle,
+        )
+            -> Result<
+            Option<::orchard::issuance::IssueBundle<A::IssueAuth>>,
             E,
         >,
     ) -> Result<ParsedPczt<A>, E>
@@ -139,11 +208,22 @@ impl Pczt {
         A: Authorization,
         E: From<ExtractError>,
     {
+        #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            issue,
+            ..
+        } = self;
+        #[cfg(not(all(feature = "orchard", zcash_unstable = "nu7")))]
+        let Pczt {
+            global,
+            transparent,
+            sapling,
+            orchard,
+            ..
         } = self;
 
         let transparent = transparent
@@ -154,6 +234,11 @@ impl Pczt {
 
         let version = match (global.tx_version, global.version_group_id) {
             (V5_TX_VERSION, V5_VERSION_GROUP_ID) => Ok(TxVersion::V5),
+            #[cfg(all(
+                any(zcash_unstable = "nu7", zcash_unstable = "zfuture"),
+                feature = "zip-233"
+            ))]
+            (V6_TX_VERSION, V6_VERSION_GROUP_ID) => Ok(TxVersion::V6),
             (version, version_group_id) => Err(ExtractError::UnsupportedTxVersion {
                 version,
                 version_group_id,
@@ -184,6 +269,8 @@ impl Pczt {
             None,
             sapling_bundle,
             orchard_bundle,
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            extract_issue(&issue)?,
         );
 
         Ok(ParsedPczt {
@@ -204,7 +291,24 @@ impl Pczt {
                     .map_err(ExtractError::TransparentExtract)
             },
             |s| s.extract_effects().map_err(ExtractError::SaplingExtract),
-            |o| o.extract_effects().map_err(ExtractError::OrchardExtract),
+            |o| {
+                #[cfg(zcash_unstable = "nu7")]
+                if o.flags().zsa_enabled() {
+                    return o
+                        .extract_effects_zsa()
+                        .map(|opt| {
+                            opt.map(zcash_primitives::transaction::OrchardBundle::OrchardZSA)
+                        })
+                        .map_err(ExtractError::OrchardExtract);
+                }
+                o.extract_effects()
+                    .map(|opt| {
+                        opt.map(zcash_primitives::transaction::OrchardBundle::OrchardVanilla)
+                    })
+                    .map_err(ExtractError::OrchardExtract)
+            },
+            #[cfg(all(feature = "orchard", zcash_unstable = "nu7"))]
+            |i| Ok(i.to_awaiting_sighash()),
         )
         .map(|parsed| parsed.tx_data)
     }
@@ -232,6 +336,8 @@ impl Authorization for EffectsOnly {
     type TransparentAuth = ::transparent::bundle::EffectsOnly;
     type SaplingAuth = ::sapling::bundle::EffectsOnly;
     type OrchardAuth = ::orchard::bundle::EffectsOnly;
+    #[cfg(zcash_unstable = "nu7")]
+    type IssueAuth = ::orchard::issuance::AwaitingSighash;
     #[cfg(zcash_unstable = "zfuture")]
     type TzeAuth = core::convert::Infallible;
 }
@@ -247,7 +353,13 @@ pub(crate) fn sighash(
     signable_input: &SignableInput,
     txid_parts: &TxDigests<Blake2bHash>,
 ) -> [u8; 32] {
-    // TODO: Pick sighash based on tx version
+    #[cfg(zcash_unstable = "nu7")]
+    if tx_data.version().has_orchard_zsa() {
+        return v6_signature_hash(tx_data, signable_input, txid_parts)
+            .as_ref()
+            .try_into()
+            .expect("correct length");
+    }
     v5_signature_hash(tx_data, signable_input, txid_parts)
         .as_ref()
         .try_into()
@@ -265,6 +377,8 @@ pub enum ExtractError {
     OrchardExtract(::orchard::pczt::TxExtractorError),
     /// An error occurred parsing the Orchard PCZT bundle from the PCZT data.
     OrchardParse(::orchard::pczt::ParseError),
+    /// An error occurred parsing the Issue PCZT bundle.
+    IssueParse,
     /// An error occurred extracting the Sapling protocol bundle from the Sapling PCZT bundle.
     SaplingExtract(::sapling::pczt::TxExtractorError),
     /// An error occurred parsing the Sapling PCZT bundle from the PCZT data.

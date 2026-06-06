@@ -16,11 +16,14 @@ impl SpendFinalizer {
 
     /// Finalizes the spends of the PCZT.
     pub fn finalize_spends(self) -> Result<Pczt, Error> {
+        let issue = self.pczt.issue().clone();
+        let shielded_sighash = *self.pczt.shielded_sighash();
         let Pczt {
             global,
             transparent,
             sapling,
             orchard,
+            ..
         } = self.pczt;
 
         let mut transparent = transparent.into_parsed().map_err(Error::TransparentParse)?;
@@ -34,6 +37,8 @@ impl SpendFinalizer {
             transparent: crate::transparent::Bundle::serialize_from(transparent),
             sapling,
             orchard,
+            issue,
+            shielded_sighash,
         })
     }
 }

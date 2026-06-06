@@ -31,6 +31,9 @@ use crate::transaction::{
 #[cfg(feature = "std")]
 use std::sync::mpsc::Sender;
 
+#[cfg(all(zcash_unstable = "nu7", not(feature = "circuits")))]
+use crate::transaction::OrchardBundle;
+
 #[cfg(feature = "circuits")]
 use {
     crate::transaction::{
@@ -72,11 +75,11 @@ use {
         Address, bundle,
         flavor::OrchardZSA,
         issuance,
-        issuance::auth::{IssueAuthKey, IssueValidatingKey, ZSASchnorr},
-        issuance::{IssueBundle, IssueInfo},
+        issuance::auth::{IssueAuthKey, ZSASchnorr},
         note::{AssetId, Nullifier},
     },
     rand_core::OsRng,
+    crate::transaction::zsa_builder::ZsaBuilder,
 };
 
 use super::components::sapling::zip212_enforcement;
@@ -381,6 +384,11 @@ pub struct PcztParts<P: Parameters> {
     pub transparent: Option<transparent::pczt::Bundle>,
     pub sapling: Option<sapling::pczt::Bundle>,
     pub orchard: Option<orchard::pczt::Bundle>,
+    /// The ZSA builder (ZSA only), carrying issuance state through to the
+    /// PCZT Issuer role. The Issuer role will build and sign the issue bundle
+    /// after the first orchard nullifier becomes available.
+    #[cfg(zcash_unstable = "nu7")]
+    pub zsa_builder: Option<ZsaBuilder>,
 }
 
 /// Generates a [`Transaction`] from its inputs and outputs.
@@ -397,9 +405,7 @@ pub struct Builder<'a, P, U> {
     sapling_builder: Option<sapling::builder::Builder>,
     orchard_builder: Option<orchard::builder::Builder>,
     #[cfg(zcash_unstable = "nu7")]
-    issuance_builder: Option<IssueBundle<issuance::AwaitingNullifier>>,
-    #[cfg(zcash_unstable = "nu7")]
-    issuance_isk: Option<orchard::issuance::auth::IssueAuthKey<ZSASchnorr>>,
+    zsa_builder: Option<ZsaBuilder>,
     #[cfg(zcash_unstable = "zfuture")]
     tze_builder: TzeBuilder<'a, TransactionData<Unauthorized>>,
     #[cfg(not(zcash_unstable = "zfuture"))]
@@ -578,9 +584,7 @@ impl<'a, P: consensus::Parameters> Builder<'a, P, ()> {
             sapling_builder,
             orchard_builder,
             #[cfg(zcash_unstable = "nu7")]
-            issuance_builder: None,
-            #[cfg(zcash_unstable = "nu7")]
-            issuance_isk: None,
+            zsa_builder: None,
             #[cfg(zcash_unstable = "zfuture")]
             tze_builder: TzeBuilder::empty(),
             #[cfg(not(zcash_unstable = "zfuture"))]
@@ -613,81 +617,56 @@ impl<'a, P: consensus::Parameters> Builder<'a, P, ()> {
             sapling_builder: self.sapling_builder,
             orchard_builder: self.orchard_builder,
             #[cfg(zcash_unstable = "nu7")]
-            issuance_builder: self.issuance_builder,
-            #[cfg(zcash_unstable = "nu7")]
-            issuance_isk: self.issuance_isk,
+            zsa_builder: self.zsa_builder,
             tze_builder: self.tze_builder,
             _progress_notifier,
         }
     }
 
-    /// Creates IssuanceBundle and adds an Issuance action to the transaction.
+    /// Sets the [`ZsaBuilder`] for this transaction.
+    ///
+    /// Call this after populating the [`ZsaBuilder`] with issuance outputs
+    /// to attach it to the transaction under construction.
     #[cfg(zcash_unstable = "nu7")]
-    pub fn init_issuance_bundle<FE>(
-        &mut self,
-        ik: IssueAuthKey<ZSASchnorr>,
-        asset_desc_hash: [u8; 32],
-        issue_info: Option<IssueInfo>,
-        first_issuance: bool,
-    ) -> Result<(), Error<FE>> {
-        if !self.tx_version.has_orchard_zsa() {
-            return Err(Error::OrchardBuild(BundleTypeNotSatisfiable));
-        }
-
-        if self.issuance_builder.is_some() {
-            return Err(Error::IssuanceBundleAlreadyInitialized);
-        }
-
-        let (bundle, _) = IssueBundle::new(
-            IssueValidatingKey::<ZSASchnorr>::from(&ik),
-            asset_desc_hash,
-            issue_info,
-            first_issuance,
-            OsRng,
-        );
-
-        self.issuance_builder = Some(bundle);
-        self.issuance_isk = Some(ik);
-
-        Ok(())
+    pub fn set_zsa_builder(&mut self, zsa: ZsaBuilder) {
+        self.zsa_builder = Some(zsa);
     }
 
-    /// Adds an Issuance action to the transaction.
+    /// Adds an issuance output. On first call, initializes the issuance bundle.
+    ///
+    /// This is a convenience wrapper that creates and stores a [`ZsaBuilder`]
+    /// internally. For more control, use [`ZsaBuilder`] directly via
+    /// [`set_zsa_builder`](Self::set_zsa_builder).
     #[cfg(zcash_unstable = "nu7")]
-    pub fn add_recipient<FE>(
+    pub fn add_issue_output<FE>(
         &mut self,
+        ik: &IssueAuthKey<ZSASchnorr>,
         asset_desc_hash: [u8; 32],
         recipient: Address,
         value: orchard::value::NoteValue,
         first_issuance: bool,
-    ) -> Result<(), Error<FE>> {
+    ) -> Result<AssetBase, Error<FE>> {
         if !self.tx_version.has_orchard_zsa() {
             return Err(Error::OrchardBuild(BundleTypeNotSatisfiable));
         }
 
-        self.issuance_builder
-            .as_mut()
-            .ok_or(Error::IssuanceBuilderNotAvailable)?
-            .add_recipient(asset_desc_hash, recipient, value, first_issuance, OsRng)
-            .map_err(Error::IssuanceBundle)?;
-
-        Ok(())
+        let zsa = self.zsa_builder.get_or_insert_with(|| ZsaBuilder::new(ik.clone()));
+        zsa.add_issue_output(asset_desc_hash, recipient, value, first_issuance, OsRng)
+            .map_err(Error::IssuanceBundle)
     }
 
-    /// Finalizes a given asset
+    /// Finalizes a given asset, preventing further issuance.
     #[cfg(zcash_unstable = "nu7")]
     pub fn finalize_asset<FE>(&mut self, asset_desc_hash: &[u8; 32]) -> Result<(), Error<FE>> {
         if !self.tx_version.has_orchard_zsa() {
             return Err(Error::OrchardBuild(BundleTypeNotSatisfiable));
         }
 
-        self.issuance_builder
+        self.zsa_builder
             .as_mut()
             .ok_or(Error::IssuanceBuilderNotAvailable)?
-            .finalize_action(asset_desc_hash)
-            .map_err(Error::IssuanceBundle)?;
-
-        Ok(())
+            .finalize_asset(asset_desc_hash)
+            .map_err(Error::IssuanceBundle)
     }
 
     /// Adds a Burn action to the transaction.
@@ -911,7 +890,7 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                             .map_err(FeeError::Bundle)
                     })?,
                 #[cfg(zcash_unstable = "nu7")]
-                self.issuance_builder.as_ref().map_or(0, |bundle| {
+                self.zsa_builder.as_ref().and_then(|z| z.bundle()).map_or(0, |bundle| {
                     bundle
                         .actions()
                         .iter()
@@ -924,8 +903,9 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                         .count()
                 }),
                 #[cfg(zcash_unstable = "nu7")]
-                self.issuance_builder
+                self.zsa_builder
                     .as_ref()
+                    .and_then(|z| z.bundle())
                     .map_or(0, |bundle| bundle.get_all_notes().len()),
             )
             .map_err(FeeError::FeeRule)
@@ -975,7 +955,7 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                             .map_err(FeeError::Bundle)
                     })?,
                 #[cfg(zcash_unstable = "nu7")]
-                self.issuance_builder.as_ref().map_or(0, |bundle| {
+                self.zsa_builder.as_ref().and_then(|z| z.bundle()).map_or(0, |bundle| {
                     bundle
                         .actions()
                         .iter()
@@ -988,8 +968,9 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                         .count()
                 }),
                 #[cfg(zcash_unstable = "nu7")]
-                self.issuance_builder
+                self.zsa_builder
                     .as_ref()
+                    .and_then(|z| z.bundle())
                     .map_or(0, |bundle| bundle.get_all_notes().len()),
                 self.tze_builder.inputs(),
                 self.tze_builder.outputs(),
@@ -1351,15 +1332,17 @@ impl<P: consensus::Parameters, U: sapling::builder::ProverProgress> Builder<'_, 
         let (tze_bundle, tze_signers) = build_future(self.tze_builder);
 
         #[cfg(zcash_unstable = "nu7")]
-        let issue_bundle_awaiting_sighash = match self.issuance_builder {
-            Some(b) => {
+        let (issue_bundle_awaiting_sighash, issuance_isk) = match self.zsa_builder {
+            Some(b) if b.is_initialized() => {
                 let nullifier =
                     first_nullifier(&unproven_orchard_bundle).ok_or(Error::<FE>::OrchardBuild(
                         orchard::builder::BuildError::BundleTypeNotSatisfiable,
                     ))?;
-                Some(b.update_rho(nullifier, &mut rng))
+                b.build(nullifier, &mut rng)
+                    .map(|(bundle, ik)| (Some(bundle), Some(ik)))
+                    .unwrap_or((None, None))
             }
-            None => None,
+            _ => (None, None),
         };
 
         let unauthed_tx: TransactionData<A> = TransactionData {
@@ -1450,8 +1433,7 @@ impl<P: consensus::Parameters, U: sapling::builder::ProverProgress> Builder<'_, 
         #[cfg(zcash_unstable = "nu7")]
         let issue_bundle = if let Some(bundle) = unauthed_tx.issue_bundle {
             let prepared = bundle.prepare(*shielded_sig_commitment.as_ref());
-            let isk = self
-                .issuance_isk
+            let isk = issuance_isk
                 .as_ref()
                 .ok_or_else(|| Error::IssuanceKeyNotAvailable)?;
             Some(prepared.sign(isk).map_err(Error::IssuanceBundle)?)
@@ -1562,6 +1544,8 @@ impl<P: consensus::Parameters, U> Builder<'_, P, U> {
                 transparent: transparent_bundle,
                 sapling: sapling_bundle,
                 orchard: orchard_bundle,
+                #[cfg(zcash_unstable = "nu7")]
+                zsa_builder: self.zsa_builder,
             },
             sapling_meta,
             orchard_meta,
@@ -1798,9 +1782,7 @@ mod tests {
             sapling_builder: None,
             orchard_builder: None,
             #[cfg(zcash_unstable = "nu7")]
-            issuance_builder: None,
-            #[cfg(zcash_unstable = "nu7")]
-            issuance_isk: None,
+            zsa_builder: None,
             #[cfg(zcash_unstable = "zfuture")]
             tze_builder: TzeBuilder::empty(),
             #[cfg(not(zcash_unstable = "zfuture"))]
@@ -2345,18 +2327,22 @@ mod tests {
 
         // Issue previously issued asset and newly created asset
         builder
-            .init_issuance_bundle::<zip317::FeeRule>(
-                isk,
+            .add_issue_output::<zip317::FeeRule>(
+                &isk,
                 asset_1,
-                Some(IssueInfo {
-                    recipient,
-                    value: NoteValue::from_raw(1),
-                }),
+                recipient,
+                NoteValue::from_raw(1),
                 false,
             )
             .unwrap();
         builder
-            .add_recipient::<zip317::FeeRule>(asset_2, recipient, NoteValue::from_raw(1), true)
+            .add_issue_output::<zip317::FeeRule>(
+                &isk,
+                asset_2,
+                recipient,
+                NoteValue::from_raw(1),
+                true,
+            )
             .unwrap();
 
         let tx = builder
