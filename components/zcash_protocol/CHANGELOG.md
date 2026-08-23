@@ -10,6 +10,23 @@ workspace.
 
 ## [Unreleased]
 
+### Added
+- `zcash_protocol::consensus::NetworkType::{Ycash, YcashTest, Pirate}`, the
+  network types for the Ycash and Pirate Chain fork networks.
+- `zcash_protocol::consensus::NetworkUpgrade::Ycash`, the network upgrade that
+  activates the Ycash-specific consensus rules on the Ycash networks.
+- `zcash_protocol::consensus::BranchId::{Ycash, YBlossom, YHeartwood, YCanopy}`,
+  the consensus branch IDs deployed by the Ycash networks from the fork
+  activation onward.
+- `zcash_protocol::consensus::Network::{YCashMainNetwork, YCashTestNetwork,
+  PirateChainMainNetwork}`, the network selector variants for the fork networks.
+- `zcash_protocol::consensus::Parameters::{upgrades_in_order, branch_id}`,
+  overridable hooks that let custom networks deploy their own upgrade sequence
+  and branch ID mappings; the default implementations preserve the Zcash
+  behavior.
+- `zcash_protocol::consensus::{ycash, piratechain}` modules, containing the
+  consensus parameter values for the fork networks.
+
 ## [0.10.5] - 2026-08-18
 
 ### Added

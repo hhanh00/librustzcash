@@ -221,6 +221,10 @@ pub(crate) mod private {
                 NetworkType::Main => Self::MAINNET,
                 NetworkType::Test => Self::TESTNET,
                 NetworkType::Regtest => Self::REGTEST,
+                // Fork networks reuse the main/test network HRPs; unified
+                // addresses are not deployed on these chains.
+                NetworkType::Ycash | NetworkType::Pirate => Self::MAINNET,
+                NetworkType::YcashTest => Self::TESTNET,
             }
         }
 

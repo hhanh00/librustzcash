@@ -27,6 +27,9 @@ fn pub_prefix<P: consensus::Parameters>(params: &P) -> Prefix {
         consensus::NetworkType::Main => Prefix::XPUB,
         consensus::NetworkType::Test => Prefix::TPUB,
         consensus::NetworkType::Regtest => Prefix::TPUB,
+        // Fork networks reuse the main/test network prefixes.
+        consensus::NetworkType::Ycash | consensus::NetworkType::Pirate => Prefix::XPUB,
+        consensus::NetworkType::YcashTest => Prefix::TPUB,
     }
 }
 

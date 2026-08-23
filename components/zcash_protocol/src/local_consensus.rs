@@ -62,6 +62,7 @@ impl Parameters for LocalNetwork {
         match nu {
             NetworkUpgrade::Overwinter => self.overwinter,
             NetworkUpgrade::Sapling => self.sapling,
+            NetworkUpgrade::Ycash => None,
             NetworkUpgrade::Blossom => self.blossom,
             NetworkUpgrade::Heartwood => self.heartwood,
             NetworkUpgrade::Canopy => self.canopy,

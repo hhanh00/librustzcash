@@ -1,8 +1,11 @@
 //! Network-specific Zcash constants.
 
 pub mod mainnet;
+pub mod pirate;
 pub mod regtest;
 pub mod testnet;
+pub mod ycash;
+pub mod ycashtest;
 
 // The `V<n>_TX_VERSION` constants, although trivial, serve to clarify that a
 // transaction version is meant in APIs that use a bare `u32`. Consider using

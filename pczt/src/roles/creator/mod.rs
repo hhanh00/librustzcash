@@ -63,7 +63,11 @@ fn consensus_branch_id_for_pczt(consensus_branch_id: u32) -> Result<BranchId, Er
         | BranchId::Sapling
         | BranchId::Blossom
         | BranchId::Heartwood
-        | BranchId::Canopy => Err(Error::UnsupportedConsensusBranchId),
+        | BranchId::Canopy
+        | BranchId::Ycash
+        | BranchId::YBlossom
+        | BranchId::YHeartwood
+        | BranchId::YCanopy => Err(Error::UnsupportedConsensusBranchId),
         branch_id => Ok(branch_id),
     }
 }
@@ -114,6 +118,10 @@ impl Creator {
             | BranchId::Blossom
             | BranchId::Heartwood
             | BranchId::Canopy
+            | BranchId::Ycash
+            | BranchId::YBlossom
+            | BranchId::YHeartwood
+            | BranchId::YCanopy
             | BranchId::Nu5
             | BranchId::Nu6
             | BranchId::Nu6_1

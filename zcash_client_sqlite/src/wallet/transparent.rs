@@ -386,6 +386,9 @@ pub(crate) fn uivk_legacy_transparent_address<P: consensus::Parameters>(
             consensus::NetworkType::Main => "mainnet",
             consensus::NetworkType::Test => "testnet",
             consensus::NetworkType::Regtest => "regtest",
+            consensus::NetworkType::Ycash => "ycash",
+            consensus::NetworkType::YcashTest => "ycash testnet",
+            consensus::NetworkType::Pirate => "pirate",
         };
         return Err(SqliteClientError::CorruptedData(format!(
             "Network type mismatch: account UIVK is for {} but a {} address was requested.",

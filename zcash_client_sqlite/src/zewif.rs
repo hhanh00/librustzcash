@@ -1035,6 +1035,9 @@ where
     let wif_prefix = match params.network_type() {
         NetworkType::Main => 0x80,
         NetworkType::Test | NetworkType::Regtest => 0xEF,
+        // Fork networks reuse the main/test network WIF prefixes.
+        NetworkType::Ycash | NetworkType::Pirate => 0x80,
+        NetworkType::YcashTest => 0xEF,
     };
     let secp = secp256k1::Secp256k1::new();
 

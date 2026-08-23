@@ -194,9 +194,14 @@ impl TxVersion {
         match consensus_branch_id {
             BranchId::Sprout => TxVersion::Sprout(2),
             BranchId::Overwinter => TxVersion::V3,
-            BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy => {
-                TxVersion::V4
-            }
+            BranchId::Sapling
+            | BranchId::Blossom
+            | BranchId::Heartwood
+            | BranchId::Canopy
+            | BranchId::Ycash
+            | BranchId::YBlossom
+            | BranchId::YHeartwood
+            | BranchId::YCanopy => TxVersion::V4,
             BranchId::Nu5 => TxVersion::V5,
             BranchId::Nu6 => TxVersion::V5,
             BranchId::Nu6_1 => TxVersion::V5,
@@ -217,21 +222,23 @@ impl TxVersion {
             TxVersion::V3 => consensus_branch_id == Overwinter,
             TxVersion::V4 => match consensus_branch_id {
                 Sprout | Overwinter => false,
-                Sapling | Blossom | Heartwood | Canopy | Nu5 | Nu6 | Nu6_1 | Nu6_2 => true,
+                Sapling | Blossom | Heartwood | Canopy | Ycash | YBlossom | YHeartwood
+                | YCanopy | Nu5 | Nu6 | Nu6_1 | Nu6_2 => true,
                 Nu6_3 => true,
                 #[cfg(zcash_unstable = "nu7")]
                 Nu7 => false, // ZIP 2003
             },
             TxVersion::V5 => match consensus_branch_id {
-                Sprout | Overwinter | Sapling | Blossom | Heartwood | Canopy => false,
+                Sprout | Overwinter | Sapling | Blossom | Heartwood | Canopy | Ycash | YBlossom
+                | YHeartwood | YCanopy => false,
                 Nu5 | Nu6 | Nu6_1 | Nu6_2 => true,
                 Nu6_3 => true,
                 #[cfg(zcash_unstable = "nu7")]
                 Nu7 => true,
             },
             TxVersion::V6 => match consensus_branch_id {
-                Sprout | Overwinter | Sapling | Blossom | Heartwood | Canopy | Nu5 | Nu6
-                | Nu6_1 | Nu6_2 => false,
+                Sprout | Overwinter | Sapling | Blossom | Heartwood | Canopy | Ycash | YBlossom
+                | YHeartwood | YCanopy | Nu5 | Nu6 | Nu6_1 | Nu6_2 => false,
                 Nu6_3 => true, // Ironwood / NU6.3
                 #[cfg(zcash_unstable = "nu7")]
                 Nu7 => true, // ZIP 230 or ZIP 248, whichever is chosen for activation
@@ -1196,9 +1203,14 @@ pub mod testing {
         match branch_id {
             BranchId::Sprout => (1..=2u32).prop_map(TxVersion::Sprout).boxed(),
             BranchId::Overwinter => Just(TxVersion::V3).boxed(),
-            BranchId::Sapling | BranchId::Blossom | BranchId::Heartwood | BranchId::Canopy => {
-                Just(TxVersion::V4).boxed()
-            }
+            BranchId::Sapling
+            | BranchId::Blossom
+            | BranchId::Heartwood
+            | BranchId::Canopy
+            | BranchId::Ycash
+            | BranchId::YBlossom
+            | BranchId::YHeartwood
+            | BranchId::YCanopy => Just(TxVersion::V4).boxed(),
             BranchId::Nu5 => Just(TxVersion::V5).boxed(),
             BranchId::Nu6 => Just(TxVersion::V5).boxed(),
             BranchId::Nu6_1 => Just(TxVersion::V5).boxed(),
