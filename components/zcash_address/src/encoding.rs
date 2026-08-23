@@ -9,7 +9,7 @@ use std::error::Error;
 
 use bech32::{Bech32, Bech32m, Checksum, Hrp, primitives::decode::CheckedHrpstring};
 use zcash_protocol::consensus::{NetworkConstants, NetworkType};
-use zcash_protocol::constants::{mainnet, regtest, testnet};
+use zcash_protocol::constants::{mainnet, pirate, regtest, testnet, ycash, ycashtest};
 
 use crate::kind::unified::Encoding;
 use crate::{AddressKind, ZcashAddress, kind::*};
@@ -79,7 +79,10 @@ impl FromStr for ZcashAddress {
                 mainnet::HRP_SAPLING_PAYMENT_ADDRESS => NetworkType::Main,
                 testnet::HRP_SAPLING_PAYMENT_ADDRESS => NetworkType::Test,
                 regtest::HRP_SAPLING_PAYMENT_ADDRESS => NetworkType::Regtest,
-                // We will not define new Bech32 address encodings.
+                ycash::HRP_SAPLING_PAYMENT_ADDRESS => NetworkType::Ycash,
+                ycashtest::HRP_SAPLING_PAYMENT_ADDRESS => NetworkType::YcashTest,
+                // Pirate Chain reuses the mainnet Sapling HRP, so its addresses
+                // are parsed as Zcash mainnet.
                 _ => {
                     return Err(ParseError::NotZcash);
                 }
@@ -127,7 +130,14 @@ impl FromStr for ZcashAddress {
                 prefix @ (testnet::B58_PUBKEY_ADDRESS_PREFIX
                 | testnet::B58_SCRIPT_ADDRESS_PREFIX
                 | testnet::B58_SPROUT_ADDRESS_PREFIX) => (prefix, NetworkType::Test),
-                // We will not define new Base58Check address encodings.
+                prefix @ (ycash::B58_PUBKEY_ADDRESS_PREFIX | ycash::B58_SCRIPT_ADDRESS_PREFIX) => {
+                    (prefix, NetworkType::Ycash)
+                }
+                prefix @ (ycashtest::B58_PUBKEY_ADDRESS_PREFIX
+                | ycashtest::B58_SCRIPT_ADDRESS_PREFIX) => (prefix, NetworkType::YcashTest),
+                prefix @ (pirate::B58_PUBKEY_ADDRESS_PREFIX | pirate::B58_SCRIPT_ADDRESS_PREFIX) => {
+                    (prefix, NetworkType::Pirate)
+                }
                 _ => return Err(ParseError::NotZcash),
             };
 
@@ -135,12 +145,16 @@ impl FromStr for ZcashAddress {
                 mainnet::B58_SPROUT_ADDRESS_PREFIX | testnet::B58_SPROUT_ADDRESS_PREFIX => {
                     decoded[2..].try_into().map(AddressKind::Sprout)
                 }
-                mainnet::B58_PUBKEY_ADDRESS_PREFIX | testnet::B58_PUBKEY_ADDRESS_PREFIX => {
-                    decoded[2..].try_into().map(AddressKind::P2pkh)
-                }
-                mainnet::B58_SCRIPT_ADDRESS_PREFIX | testnet::B58_SCRIPT_ADDRESS_PREFIX => {
-                    decoded[2..].try_into().map(AddressKind::P2sh)
-                }
+                mainnet::B58_PUBKEY_ADDRESS_PREFIX
+                | testnet::B58_PUBKEY_ADDRESS_PREFIX
+                | ycash::B58_PUBKEY_ADDRESS_PREFIX
+                | ycashtest::B58_PUBKEY_ADDRESS_PREFIX
+                | pirate::B58_PUBKEY_ADDRESS_PREFIX => decoded[2..].try_into().map(AddressKind::P2pkh),
+                mainnet::B58_SCRIPT_ADDRESS_PREFIX
+                | testnet::B58_SCRIPT_ADDRESS_PREFIX
+                | ycash::B58_SCRIPT_ADDRESS_PREFIX
+                | ycashtest::B58_SCRIPT_ADDRESS_PREFIX
+                | pirate::B58_SCRIPT_ADDRESS_PREFIX => decoded[2..].try_into().map(AddressKind::P2sh),
                 _ => unreachable!(),
             }
             .map_err(|_| ParseError::InvalidEncoding)
